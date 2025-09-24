@@ -10,6 +10,17 @@ const parseNum = (v, fb = 0) => {
   return Number.isFinite(n) ? n : fb;
 };
 
+// Convierte índice 0->A, 1->B, ... 25->Z, 26->AA, etc.
+const idxToLetter = (i) => {
+  let n = i;
+  let s = "";
+  do {
+    s = String.fromCharCode(65 + (n % 26)) + s;
+    n = Math.floor(n / 26) - 1;
+  } while (n >= 0);
+  return s;
+};
+
 // Input numérico tolerante (spinner = inmediato; tecleo = al salir/Enter)
 function NumInput({ value, onCommit, className, title }) {
   const [txt, setTxt] = useState("");
@@ -386,7 +397,6 @@ export default function App() {
   const radii = [0.5, 0.7, 1.0, 2.0];
   const [ringsRed, setRingsRed] = useState({ 0.5: true, 0.7: true, 1: false, 2: false });
   const [ringsBlue, setRingsBlue] = useState({ 0.5: true, 0.7: true, 1: false, 2: false });
-  const [seed, setSeed] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState(false);
@@ -397,7 +407,7 @@ export default function App() {
   const [future, setFuture] = useState([]);
   const takeSnapshot = () =>
     JSON.parse(
-      JSON.stringify({ vertices, alturaZ, F1, F2, activeF1, activeF2, blue, ringsRed, ringsBlue, seed })
+      JSON.stringify({ vertices, alturaZ, F1, F2, activeF1, activeF2, blue, ringsRed, ringsBlue })
     );
   const applySnapshot = (s) => {
     setVertices(s.vertices);
@@ -409,7 +419,7 @@ export default function App() {
     setBlue(s.blue);
     setRingsRed(s.ringsRed);
     setRingsBlue(s.ringsBlue);
-    setSeed(s.seed);
+    // seed eliminado: no recuperar
   };
   const undo = () => {
     setPast((p) => {
@@ -445,7 +455,7 @@ export default function App() {
         s.blue && setBlue(s.blue);
         s.ringsRed && setRingsRed(s.ringsRed);
         s.ringsBlue && setRingsBlue(s.ringsBlue);
-        s.seed && setSeed(s.seed);
+        // seed eliminado: no cargar
       }
     } catch {}
   }, []);
@@ -453,10 +463,10 @@ export default function App() {
     try {
       localStorage.setItem(
         "puntos_app_state_min",
-        JSON.stringify({ vertices, alturaZ, F1, F2, activeF1, activeF2, blue, ringsRed, ringsBlue, seed })
+        JSON.stringify({ vertices, alturaZ, F1, F2, activeF1, activeF2, blue, ringsRed, ringsBlue })
       );
     } catch {}
-  }, [vertices, alturaZ, F1, F2, activeF1, activeF2, blue, ringsRed, ringsBlue, seed]);
+  }, [vertices, alturaZ, F1, F2, activeF1, activeF2, blue, ringsRed, ringsBlue]);
 
   // Escala y helpers de dibujo
   const width = 700,
@@ -575,27 +585,11 @@ export default function App() {
     if (activeF2) check(F2, v.F2);
     blue.forEach((b, i) => check(b, v.blue[i]));
 
-    // Reglas F1–F2 por planos y ejes solo si ambas fuentes están activas
+    // Reglas F1–F2 por ejes (simultáneamente) solo si ambas fuentes están activas
     if (activeF1 && activeF2) {
-      const pd = planarDistances(F1, F2);
       const dx = Math.abs(F1.x - F2.x),
         dy = Math.abs(F1.y - F2.y),
         dz = Math.abs(F1.z - F2.z);
-      if (pd.xy < 0.7) {
-        v.F1.x = v.F1.y = v.F2.x = v.F2.y = true;
-        v.F1.msg.push(`F1–F2 < 0,7 en XY (${pd.xy.toFixed(2)} m)`);
-        v.F2.msg.push(`F1–F2 < 0,7 en XY (${pd.xy.toFixed(2)} m)`);
-      }
-      if (pd.xz < 0.7) {
-        v.F1.x = v.F1.z = v.F2.x = v.F2.z = true;
-        v.F1.msg.push(`F1–F2 < 0,7 en XZ (${pd.xz.toFixed(2)} m)`);
-        v.F2.msg.push(`F1–F2 < 0,7 en XZ (${pd.xz.toFixed(2)} m)`);
-      }
-      if (pd.yz < 0.7) {
-        v.F1.y = v.F1.z = v.F2.y = v.F2.z = true;
-        v.F1.msg.push(`F1–F2 < 0,7 en YZ (${pd.yz.toFixed(2)} m)`);
-        v.F2.msg.push(`F1–F2 < 0,7 en YZ (${pd.yz.toFixed(2)} m)`);
-      }
       if (dx < 0.7) {
         v.F1.x = v.F2.x = true;
         v.F1.msg.push(`F1–F2: |X| = ${dx.toFixed(2)} < 0,7 m`);
@@ -696,7 +690,7 @@ export default function App() {
     setErr(false);
     setMsg("Generando puntos...");
     // grabar estado previo para poder deshacer la generación
-    setPast((p) => [...p, JSON.parse(JSON.stringify({ vertices, alturaZ, F1, F2, activeF1, activeF2, blue, ringsRed, ringsBlue, seed }))]);
+    setPast((p) => [...p, JSON.parse(JSON.stringify({ vertices, alturaZ, F1, F2, activeF1, activeF2, blue, ringsRed, ringsBlue }))]);
     setFuture([]);
 
     setTimeout(() => {
@@ -705,7 +699,6 @@ export default function App() {
           F1,
           F2,
           candidates,
-          seed,
           genNonce: nonce,
           f1Active: activeF1,
           f2Active: activeF2,
@@ -725,7 +718,7 @@ export default function App() {
           setErr(true);
           setMsg(`⚠️ No es posible cumplir todas las reglas con esta geometría. Se muestran 5 puntos maximizando separación.\n• ${issues.slice(0, 8).join("\n• ")}`);
         }
-        if (!seed) setNonce((n) => n + 1);
+        setNonce((n) => n + 1);
       } catch (e) {
         console.error(e);
         setErr(true);
@@ -734,7 +727,7 @@ export default function App() {
         setBusy(false);
       }
     }, 20);
-  }, [busy, candidates, seed, nonce, F1, F2, activeF1, activeF2, byZ, zLevelsAll]);
+  }, [busy, candidates, nonce, F1, F2, activeF1, activeF2, byZ, zLevelsAll]);
 
   // Dibujo: rejilla + ejes + polígono + puntos
   const GridAxes = useMemo(() => {
@@ -860,7 +853,7 @@ export default function App() {
           <h2 className="text-base font-medium mb-2">Datos del recinto</h2>
           {vertices.map((v, i) => (
             <div key={i} className="flex items-center gap-2 mb-1 text-xs">
-              <span className="w-4 text-gray-500">{i + 1}</span>
+              <span className="w-5 text-gray-500">{idxToLetter(i)}</span>
               <label>X:</label>
               <NumInput
                 value={v.x}
@@ -967,17 +960,7 @@ export default function App() {
               ))}
             </tbody>
           </table>
-          <div className="mt-2 text-xs flex items-center gap-2">
-            <label>Semilla:</label>
-            <input
-              type="text"
-              value={seed}
-              onChange={(e) => setSeed(e.target.value)}
-              className="border rounded px-2 py-1"
-              placeholder="(opcional)"
-            />
-            <span className="text-gray-500">Fija la distribución.</span>
-          </div>
+          {/* Opción de semilla eliminada */}
         </section>
 
         {/* Tabla de distancias (3D) */}
@@ -1031,13 +1014,33 @@ export default function App() {
       <div className="flex gap-4 items-start">
         <div className="p-3 rounded-xl shadow bg-white border">
           <svg width={width} height={height}>
-            {GridAxes}
+            {/* Relleno del recinto debajo de la rejilla */}
             <polygon
               points={vertices.map((v) => { const s = toSvg(v); return `${s.x},${s.y}`; }).join(" ")}
               fill="#eef6ff"
+              stroke="none"
+            />
+            {/* Rejilla por encima del relleno para que se vea dentro del recinto */}
+            {GridAxes}
+            {/* Contorno del recinto por encima de la rejilla */}
+            <polygon
+              points={vertices.map((v) => { const s = toSvg(v); return `${s.x},${s.y}`; }).join(" ")}
+              fill="none"
               stroke="#93c5fd"
               strokeWidth={2}
             />
+
+            {/* Vértices etiquetados A, B, C, ... */}
+            {vertices.map((v, i) => {
+              const s = toSvg(v);
+              const label = idxToLetter(i);
+              return (
+                <g key={`V-${i}`}>
+                  <circle cx={s.x} cy={s.y} r={3} fill="#111" />
+                  <text x={s.x + 6} y={s.y - 6} fontSize={11} fill="#111">{label}</text>
+                </g>
+              );
+            })}
 
             {(() => {
               const draw = (p, label, color, rings, active) => {
