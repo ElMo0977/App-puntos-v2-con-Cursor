@@ -266,19 +266,19 @@ function generateBluePoints({
       let pool = (byZ.get(zk) || []).filter((c) => !usedX.has(key01(c.x)) && !usedY.has(key01(c.y)));
       if (!pool.length) continue;
 
-      // Filtrar por distancias; si vacío, mantenemos pool para explorar rutas relajadas después
+      // Filtrar por distancias; si vacío, no es válido este nivel Z
       const poolOk = pool.filter(
         (c) =>
           redAnchors().every((r) => dist3D(c, r) >= MIN_RED_BLUE) &&
           chosen.every((q) => dist3D(c, q) >= MIN_BLUE_BLUE)
       );
-      const base = poolOk.length ? poolOk : pool;
+      if (!poolOk.length) continue;
 
       // Ranking maximin + jitter
-      const ranked = base
+      const ranked = poolOk
         .map((c) => ({ c, s: scoreMaximin(c, chosen) + rng() * 0.02 }))
         .sort((a, b) => b.s - a.s)
-        .slice(0, Math.min(TOPC, base.length));
+        .slice(0, Math.min(TOPC, poolOk.length));
 
       for (const { c } of ranked) {
         const nx = new Set(usedX);
@@ -301,12 +301,22 @@ function generateBluePoints({
     for (let it = 0; it < 2; it++) {
       for (let i = 0; i < best.length; i++) {
         const zi = key01(best[i].z);
-        const pool = (byZ.get(zi) || []).filter(
-          (c) =>
-            key01(c.x) !== key01(best[i].x) &&
-            key01(c.y) !== key01(best[i].y) && // cambio real
-            !best.some((q, k) => k !== i && (key01(q.x) === key01(c.x) || key01(q.y) === key01(c.y)))
-        );
+        const anchors = redAnchors();
+        const pool = (byZ.get(zi) || []).filter((c) => {
+          const cx = key01(c.x);
+          const cy = key01(c.y);
+          // Debe suponer un cambio real del punto i
+          if (cx === key01(best[i].x) && cy === key01(best[i].y)) return false;
+          // Unicidad X/Y respecto al resto de P
+          if (best.some((q, k) => k !== i && (key01(q.x) === cx || key01(q.y) === cy))) return false;
+          // Unicidad X/Y respecto a F activas
+          if (anchors.some((r) => key01(r.x) === cx || key01(r.y) === cy)) return false;
+          // Distancias mínimas con F activas
+          if (!anchors.every((r) => dist3D(c, r) >= MIN_RED_BLUE)) return false;
+          // Distancias mínimas con el resto de P
+          if (!best.every((q, k) => (k === i ? true : dist3D(c, q) >= MIN_BLUE_BLUE))) return false;
+          return true;
+        });
         let cand = best[i];
         let score = scoreMaximin(cand, best.filter((_, k) => k !== i));
         for (const p of pool) {
