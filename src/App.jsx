@@ -852,11 +852,11 @@ export default function App() {
 
   return (
     <div className="p-6 space-y-4">
-      <h1 className="text-xl font-semibold">Distribución de Puntos Acústicos - UNE EN ISO 16283-1-2015 - Medidas de aislamiento a ruido aéreo</h1>
+      <h1 className="text-xl font-semibold text-white">Distribución de Puntos Acústicos - UNE EN ISO 16283-1-2015 - Medidas de aislamiento a ruido aéreo</h1>
 
-      <div className="grid lg:grid-cols-3 md:grid-cols-2 gap-3 items-stretch">
+      <div className="flex flex-wrap gap-4 items-start">
         {/* Datos del recinto */}
-        <section className="p-2 rounded-xl shadow bg-white border text-sm">
+        <section className="p-2 rounded-xl shadow bg-white border text-sm self-start w-fit">
           <h2 className="text-base font-medium mb-2">Datos del recinto</h2>
           {vertices.map((v, i) => (
             <div key={i} className="flex items-center gap-2 mb-1 text-xs">
@@ -895,33 +895,39 @@ export default function App() {
               </button>
             </div>
           ))}
-          <div className="flex items-center gap-2 mt-2 text-sm">
-            <button
-              onClick={() => {
-                setPast((p) => [...p, takeSnapshot()]);
-                setFuture([]);
-                setVertices((v) => [...v, { x: 0, y: 0 }]);
-              }}
-              className="px-2 py-0.5 border rounded hover:bg-gray-50 text-xs"
-            >
-              + vértice
-            </button>
-            <label className="ml-2">Altura Z:</label>
-            <NumInput
-              value={alturaZ}
-              onCommit={(val) => {
-                setPast((p) => [...p, takeSnapshot()]);
-                setFuture([]);
-                setAlturaZ(val);
-              }}
-              className="w-24 border rounded px-1"
-            />
-            <span className="ml-auto text-xs text-gray-600">Área: {area.toFixed(2)} · Volumen: {volumen.toFixed(2)}</span>
+          <div className="flex flex-col gap-2 mt-2 text-sm">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  setPast((p) => [...p, takeSnapshot()]);
+                  setFuture([]);
+                  setVertices((v) => [...v, { x: 0, y: 0 }]);
+                }}
+                className="px-2 py-0.5 border rounded hover:bg-gray-50 text-xs"
+              >
+                + vértice
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              <label>Altura Z:</label>
+              <NumInput
+                value={alturaZ}
+                onCommit={(val) => {
+                  setPast((p) => [...p, takeSnapshot()]);
+                  setFuture([]);
+                  setAlturaZ(val);
+                }}
+                className="w-24 border rounded px-1"
+              />
+            </div>
+            <div className="text-xs text-gray-600">
+              Área: {area.toFixed(2)} · Volumen: {volumen.toFixed(2)}
+            </div>
           </div>
         </section>
 
         {/* Círculos de distancia */}
-        <section className="p-2 rounded-xl shadow bg-white border text-sm">
+        <section className="p-2 rounded-xl shadow bg-white border text-sm self-start w-fit">
           <h2 className="text-base font-medium mb-2">Círculos de distancia</h2>
           <table className="text-xs border w-full">
             <thead>
@@ -975,7 +981,7 @@ export default function App() {
         </section>
 
         {/* Tabla de distancias (3D) */}
-        <section className="p-2 rounded-xl shadow bg-white border text-sm">
+        <section className="p-2 rounded-xl shadow bg-white border text-sm self-start w-fit">
           <h2 className="text-base font-medium mb-2">Tabla de distancias (3D)</h2>
           {pointList.length >= 2 ? (
             <div>
