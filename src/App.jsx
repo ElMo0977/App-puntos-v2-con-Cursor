@@ -402,6 +402,7 @@ export default function App() {
   const [activeF1, setActiveF1] = useState(true);
   const [activeF2, setActiveF2] = useState(true);
   const [blue, setBlue] = useState([]);
+  const [blueActive, setBlueActive] = useState(true);
 
   // UI
   const radii = [0.5, 0.7, 1.0, 2.0];
@@ -417,7 +418,7 @@ export default function App() {
   const [future, setFuture] = useState([]);
   const takeSnapshot = () =>
     JSON.parse(
-      JSON.stringify({ vertices, alturaZ, F1, F2, activeF1, activeF2, blue, ringsRed, ringsBlue })
+      JSON.stringify({ vertices, alturaZ, F1, F2, activeF1, activeF2, blue, blueActive, ringsRed, ringsBlue })
     );
   const applySnapshot = (s) => {
     setVertices(s.vertices);
@@ -427,6 +428,7 @@ export default function App() {
     setActiveF1(s.activeF1);
     setActiveF2(s.activeF2);
     setBlue(s.blue);
+    if (typeof s.blueActive === 'boolean') setBlueActive(s.blueActive);
     setRingsRed(s.ringsRed);
     setRingsBlue(s.ringsBlue);
     // seed eliminado: no recuperar
@@ -473,10 +475,10 @@ export default function App() {
     try {
       localStorage.setItem(
         "puntos_app_state_min",
-        JSON.stringify({ vertices, alturaZ, F1, F2, activeF1, activeF2, blue, ringsRed, ringsBlue })
+        JSON.stringify({ vertices, alturaZ, F1, F2, activeF1, activeF2, blue, blueActive, ringsRed, ringsBlue })
       );
     } catch {}
-  }, [vertices, alturaZ, F1, F2, activeF1, activeF2, blue, ringsRed, ringsBlue]);
+  }, [vertices, alturaZ, F1, F2, activeF1, activeF2, blue, blueActive, ringsRed, ringsBlue]);
 
   // Escala y helpers de dibujo
   const width = 700,
@@ -721,6 +723,7 @@ export default function App() {
           zLevelsAll,
         });
         setBlue(res.points);
+        setBlueActive(true);
 
         const issues = buildViolationSummary(res.points);
         if (res.feasible && issues.length === 0) {
@@ -866,10 +869,10 @@ export default function App() {
     const maxP = 5;
     for (let i = 0; i < maxP; i++) {
       const b = blue[i] || null;
-      arr.push({ name: `P${i + 1}`, p: b, color: "#2563eb" });
+      arr.push({ name: `P${i + 1}`, p: blueActive && b ? b : null, color: "#2563eb" });
     }
     return arr;
-  }, [F1, F2, blue, activeF1, activeF2]);
+  }, [F1, F2, blue, blueActive, activeF1, activeF2]);
 
   const distMatrix = useMemo(() => {
     const n = pointListTable.length;
@@ -895,14 +898,17 @@ export default function App() {
 
   const minPair = useMemo(() => {
     let best = { a: null, b: null, d: Infinity };
-    for (let i = 0; i < pointList.length; i++) {
-      for (let j = i + 1; j < pointList.length; j++) {
-        const d = dist3D(pointList[i].p, pointList[j].p);
-        if (d < best.d) best = { a: pointList[i].name, b: pointList[j].name, d };
+    for (let i = 0; i < pointListTable.length; i++) {
+      for (let j = i + 1; j < pointListTable.length; j++) {
+        const Ai = pointListTable[i];
+        const Bj = pointListTable[j];
+        if (!Ai.p || !Bj.p) continue;
+        const d = dist3D(Ai.p, Bj.p);
+        if (d < best.d) best = { a: Ai.name, b: Bj.name, d };
       }
     }
     return best.d < Infinity ? best : null;
-  }, [pointList]);
+  }, [pointListTable]);
 
   // Pares en violación de distancias + mensajes para avisos
   const distViol = useMemo(() => {
@@ -1214,23 +1220,23 @@ export default function App() {
               return [
                 draw(F1, `F1 (${F1.x.toFixed(1)}, ${F1.y.toFixed(1)}, ${F1.z.toFixed(1)})`, "#e11d48", ringsRed, activeF1, { kind: 'F1' }),
                 draw(F2, `F2 (${F2.x.toFixed(1)}, ${F2.y.toFixed(1)}, ${F2.z.toFixed(1)})`, "#e11d48", ringsRed, activeF2, { kind: 'F2' }),
-                ...blue.map((b, i) => draw(b, `P${i + 1} (${b.x.toFixed(1)}, ${b.y.toFixed(1)}, ${b.z.toFixed(1)})`, "#2563eb", ringsBlue, true, { kind: 'P', index: i })),
+                ...(blueActive ? blue.map((b, i) => draw(b, `P${i + 1} (${b.x.toFixed(1)}, ${b.y.toFixed(1)}, ${b.z.toFixed(1)})`, "#2563eb", ringsBlue, true, { kind: 'P', index: i })) : []),
               ];
             })()}
           </svg>
         </div>
 
-        <section className="p-3 rounded-xl shadow bg-white border min-w-[420px]">
-          <h2 className="text-base font-medium mb-2">Tabla de puntos (editable)</h2>
+        <section className="p-3 rounded-xl shadow bg-white border">
+          <h2 className="text-base font-medium mb-2">Tabla de puntos</h2>
 
-          <table className="text-xs">
+          <table className="text-xs border table-fixed w-[420px]">
             <thead>
               <tr>
-                <th className="px-2">Activa</th>
-                <th className="px-2">Punto</th>
-                <th className="px-2">X</th>
-                <th className="px-2">Y</th>
-                <th className="px-2">Z</th>
+                <th className="px-2 h-7 w-16">Activa</th>
+                <th className="px-2 h-7 w-20">Punto</th>
+                <th className="px-2 h-7 w-16">X</th>
+                <th className="px-2 h-7 w-16">Y</th>
+                <th className="px-2 h-7 w-16">Z</th>
               </tr>
             </thead>
             <tbody>
@@ -1239,7 +1245,7 @@ export default function App() {
                 { name: "F2", val: F2, v: viol.F2, active: activeF2, setActive: setActiveF2 },
               ].map((row) => (
                 <tr key={row.name}>
-                  <td className="px-2 text-center">
+                  <td className="px-2 text-center h-7">
                     <input
                       type="checkbox"
                       checked={row.active}
@@ -1250,8 +1256,8 @@ export default function App() {
                       }}
                     />
                   </td>
-                  <td className="px-2 font-medium">{row.name}</td>
-                  <td className="px-2">
+                  <td className="px-2 font-medium h-7">{row.name}</td>
+                  <td className="px-2 h-7">
                     <NumInput
                       value={row.val.x}
                       onCommit={(val) => {
@@ -1263,7 +1269,7 @@ export default function App() {
                       title={row.v.msg.join("\n")}
                     />
                   </td>
-                  <td className="px-2">
+                  <td className="px-2 h-7">
                     <NumInput
                       value={row.val.y}
                       onCommit={(val) => {
@@ -1275,7 +1281,7 @@ export default function App() {
                       title={row.v.msg.join("\n")}
                     />
                   </td>
-                  <td className="px-2">
+                  <td className="px-2 h-7">
                     <NumInput
                       value={row.val.z}
                       onCommit={(val) => {
@@ -1290,10 +1296,10 @@ export default function App() {
                 </tr>
               ))}
               {blue.map((b, i) => (
-                <tr key={i}>
-                  <td className="px-2 text-center">—</td>
-                  <td className="px-2">{`P${i + 1}`}</td>
-                  <td className="px-2">
+                <tr key={i} className={!blueActive ? 'opacity-60' : ''}>
+                  <td className="px-2 text-center h-7">—</td>
+                  <td className="px-2 h-7">{`P${i + 1}`}</td>
+                  <td className="px-2 h-7">
                     <NumInput
                       value={b.x}
                       onCommit={(val) => {
@@ -1301,11 +1307,12 @@ export default function App() {
                         setFuture([]);
                         setBlue((B) => B.map((p, k) => (k === i ? { ...p, x: val } : p)));
                       }}
-                      className={`w-16 border rounded px-1 ${viol.blue[i]?.x ? "border-red-500 bg-red-50" : ""}`}
+                      disabled={!blueActive}
+                      className={`w-16 border rounded px-1 ${!blueActive ? 'bg-gray-50' : ''} ${viol.blue[i]?.x ? "border-red-500 bg-red-50" : ""}`}
                       title={(viol.blue[i]?.msg || []).join("\n")}
                     />
                   </td>
-                  <td className="px-2">
+                  <td className="px-2 h-7">
                     <NumInput
                       value={b.y}
                       onCommit={(val) => {
@@ -1313,11 +1320,12 @@ export default function App() {
                         setFuture([]);
                         setBlue((B) => B.map((p, k) => (k === i ? { ...p, y: val } : p)));
                       }}
-                      className={`w-16 border rounded px-1 ${viol.blue[i]?.y ? "border-red-500 bg-red-50" : ""}`}
+                      disabled={!blueActive}
+                      className={`w-16 border rounded px-1 ${!blueActive ? 'bg-gray-50' : ''} ${viol.blue[i]?.y ? "border-red-500 bg-red-50" : ""}`}
                       title={(viol.blue[i]?.msg || []).join("\n")}
                     />
                   </td>
-                  <td className="px-2">
+                  <td className="px-2 h-7">
                     <NumInput
                       value={b.z}
                       onCommit={(val) => {
@@ -1325,7 +1333,8 @@ export default function App() {
                         setFuture([]);
                         setBlue((B) => B.map((p, k) => (k === i ? { ...p, z: val } : p)));
                       }}
-                      className={`w-16 border rounded px-1 ${viol.blue[i]?.z ? "border-red-500 bg-red-50" : ""}`}
+                      disabled={!blueActive}
+                      className={`w-16 border rounded px-1 ${!blueActive ? 'bg-gray-50' : ''} ${viol.blue[i]?.z ? "border-red-500 bg-red-50" : ""}`}
                       title={(viol.blue[i]?.msg || []).join("\n")}
                     />
                   </td>
@@ -1346,11 +1355,11 @@ export default function App() {
               onClick={() => {
                 setPast((p) => [...p, takeSnapshot()]);
                 setFuture([]);
-                setBlue([]);
+                setBlueActive(false);
                 setMsg("");
                 setErr(false);
               }}
-              disabled={busy || blue.length === 0}
+              disabled={busy}
             >
               Limpiar
             </button>
@@ -1360,7 +1369,7 @@ export default function App() {
             const pts = [
               ...(activeF1 ? [{ name: "F1", p: F1 }] : []),
               ...(activeF2 ? [{ name: "F2", p: F2 }] : []),
-              ...blue.map((b, i) => ({ name: `P${i + 1}`, p: b })),
+              ...(blueActive ? blue.map((b, i) => ({ name: `P${i + 1}`, p: b })) : []),
             ];
 
             ["x", "y", "z"].forEach((axis) => {
