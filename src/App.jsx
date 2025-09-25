@@ -999,15 +999,40 @@ export default function App() {
                     {pointList.map((row, i) => (
                       <tr key={row.name}>
                         <td className="px-2 py-1 font-medium" style={{ color: row.color }}>{row.name}</td>
-                        {pointList.map((col, j) => (
-                          <td key={col.name}
-                              className={`px-2 py-1 text-right ${i === j ? "text-gray-400" : ""} ${
-                                minPair && ((row.name === minPair.a && col.name === minPair.b) || (row.name === minPair.b && col.name === minPair.a)) ? "bg-yellow-50" : ""
-                              } ${ i !== j && distViol?.pairs?.has(`${Math.min(i,j)}-${Math.max(i,j)}`) ? "text-rose-700 font-semibold bg-rose-50" : ""}`}
-                          >
-                            {distMatrix[i][j]}
-                          </td>
-                        ))}
+                        {pointList.map((col, j) => {
+                          const dStr = distMatrix[i][j];
+                          const dVal = parseFloat(dStr);
+                          const isDiag = i === j;
+                          const isMinPair =
+                            !!minPair &&
+                            ((row.name === minPair.a && col.name === minPair.b) ||
+                              (row.name === minPair.b && col.name === minPair.a));
+                          const pairKey = `${Math.min(i, j)}-${Math.max(i, j)}`;
+                          const isViol = !isDiag && distViol?.pairs?.has(pairKey);
+                          const underTwo = !isDiag && Number.isFinite(dVal) && dVal < 2;
+
+                          // Prioridad de estilos: diagonal < mínimo (amarillo) < violación (rose) < <2m (rojo suave)
+                          const bgClass = isDiag
+                            ? ""
+                            : isMinPair
+                            ? "bg-yellow-50"
+                            : isViol
+                            ? "bg-rose-50"
+                            : underTwo
+                            ? "bg-red-50"
+                            : "";
+                          const textClass = isDiag
+                            ? "text-gray-400"
+                            : isViol
+                            ? "text-rose-700 font-semibold"
+                            : "";
+
+                          return (
+                            <td key={col.name} className={`px-2 py-1 text-right ${textClass} ${bgClass}`}>
+                              {dStr}
+                            </td>
+                          );
+                        })}
                       </tr>
                     ))}
                   </tbody>
