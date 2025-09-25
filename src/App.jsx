@@ -1077,80 +1077,6 @@ export default function App() {
           {/* Opción de semilla eliminada */}
         </section>
 
-        {/* Tabla de distancias (3D) */}
-        <section className="p-2 rounded-xl shadow bg-white border text-sm self-start w-fit">
-          <h2 className="text-base font-medium mb-2">Tabla de distancias (3D)</h2>
-          <div>
-            <div className="text-[11px] text-gray-600 mb-2">
-              Distancia en línea recta entre todos los puntos activos. {minPair ? (
-                <span>
-                  Mínima actual: <b>{minPair.a}</b>–<b>{minPair.b}</b> = {minPair.d.toFixed(2)} m
-                </span>
-              ) : null}
-            </div>
-            <div className="overflow-auto max-h-64">
-              <table className="text-xs border table-fixed w-[520px]">
-                <thead>
-                  <tr>
-                    <th className="px-2 py-1 w-10 h-7">•</th>
-                    {pointListTable.map((pt) => (
-                      <th
-                        key={pt.name}
-                        className={`px-2 py-1 text-right w-14 h-7 whitespace-nowrap ${!pt.p ? 'text-gray-400' : ''}`}
-                        style={{ color: pt.p ? pt.color : undefined }}
-                      >
-                        {pt.name}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {pointListTable.map((row, i) => (
-                    <tr key={row.name}>
-                      <td className="px-2 py-1 font-medium w-10 h-7 whitespace-nowrap" style={{ color: row.p ? row.color : undefined, opacity: row.p ? 1 : 0.6 }}>{row.name}</td>
-                      {pointListTable.map((col, j) => {
-                        const dStr = distMatrix[i][j];
-                        const hasData = !!(row.p && col.p);
-                        const dVal = parseFloat(dStr);
-                        const isDiag = i === j;
-                        const diagWithData = isDiag && hasData;
-                        const isMinPair =
-                          !!minPair &&
-                          ((row.name === minPair.a && col.name === minPair.b) ||
-                            (row.name === minPair.b && col.name === minPair.a));
-                        const pairKey = `${Math.min(i, j)}-${Math.max(i, j)}`;
-                        const isViol = !isDiag && hasData && distViol?.pairs?.has(pairKey);
-                        const underTwo = !isDiag && hasData && Number.isFinite(dVal) && dVal < 2;
-
-                        // Prioridad de estilos: diagonal con datos < mínimo (amarillo) < violación (rose) < <2m (rojo suave)
-                        const bgClass = diagWithData
-                          ? ""
-                          : isMinPair
-                          ? "bg-yellow-50"
-                          : isViol
-                          ? "bg-rose-50"
-                          : underTwo
-                          ? "bg-red-50"
-                          : "";
-                        const textClass = diagWithData
-                          ? "text-gray-400"
-                          : isViol
-                          ? "text-rose-700 font-semibold"
-                          : "";
-
-                        return (
-                          <td key={col.name} className={`px-2 py-1 text-right h-7 ${textClass} ${bgClass}`}>
-                            {dStr}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </section>
       </div>
 
       {/* Dibujo + tabla */}
@@ -1226,7 +1152,83 @@ export default function App() {
           </svg>
         </div>
 
-        <section className="p-3 rounded-xl shadow bg-white border">
+        <div className="flex flex-col gap-4">
+          {/* Tabla de distancias (3D) */}
+          <section className="p-3 rounded-xl shadow bg-white border text-sm w-fit">
+            <h2 className="text-base font-medium mb-2">Tabla de distancias (3D)</h2>
+            <div>
+              <div className="text-[11px] text-gray-600 mb-2">
+                Distancia en línea recta entre todos los puntos activos. {minPair ? (
+                  <span>
+                    Mínima actual: <b>{minPair.a}</b>–<b>{minPair.b}</b> = {minPair.d.toFixed(2)} m
+                  </span>
+                ) : null}
+              </div>
+              <div className="overflow-auto max-h-64">
+                <table className="text-xs border table-fixed w-[420px]">
+                  <thead>
+                    <tr>
+                      <th className="px-2 py-1 w-10 h-7">•</th>
+                      {pointListTable.map((pt) => (
+                        <th
+                          key={pt.name}
+                          className={`px-2 py-1 text-right w-14 h-7 whitespace-nowrap ${!pt.p ? 'text-gray-400' : ''}`}
+                          style={{ color: pt.p ? pt.color : undefined }}
+                        >
+                          {pt.name}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pointListTable.map((row, i) => (
+                      <tr key={row.name}>
+                        <td className="px-2 py-1 font-medium w-10 h-7 whitespace-nowrap" style={{ color: row.p ? row.color : undefined, opacity: row.p ? 1 : 0.6 }}>{row.name}</td>
+                        {pointListTable.map((col, j) => {
+                          const dStr = distMatrix[i][j];
+                          const hasData = !!(row.p && col.p);
+                          const dVal = parseFloat(dStr);
+                          const isDiag = i === j;
+                          const diagWithData = isDiag && hasData;
+                          const isMinPair =
+                            !!minPair &&
+                            ((row.name === minPair.a && col.name === minPair.b) ||
+                              (row.name === minPair.b && col.name === minPair.a));
+                          const pairKey = `${Math.min(i, j)}-${Math.max(i, j)}`;
+                          const isViol = !isDiag && hasData && distViol?.pairs?.has(pairKey);
+                          const underTwo = !isDiag && hasData && Number.isFinite(dVal) && dVal < 2;
+
+                          // Prioridad de estilos: diagonal con datos < mínimo (amarillo) < violación (rose) < <2m (rojo suave)
+                          const bgClass = diagWithData
+                            ? ""
+                            : isMinPair
+                            ? "bg-yellow-50"
+                            : isViol
+                            ? "bg-rose-50"
+                            : underTwo
+                            ? "bg-red-50"
+                            : "";
+                          const textClass = diagWithData
+                            ? "text-gray-400"
+                            : isViol
+                            ? "text-rose-700 font-semibold"
+                            : "";
+
+                          return (
+                            <td key={col.name} className={`px-2 py-1 text-right h-7 ${textClass} ${bgClass}`}>
+                              {dStr}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+
+          <section className="p-3 rounded-xl shadow bg-white border text-sm w-fit">
           <h2 className="text-base font-medium mb-2">Tabla de puntos</h2>
 
           <table className="text-xs border table-fixed w-[420px]">
@@ -1411,7 +1413,8 @@ export default function App() {
               <li>➤ Punto – Punto ≥ 0,7 m (3D).</li>
             </ul>
           </div>
-        </section>
+          </section>
+        </div>
       </div>
     </div>
   );
