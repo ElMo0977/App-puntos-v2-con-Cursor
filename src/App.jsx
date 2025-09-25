@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 // ===== Utilidades cortas =====
 const EPS = 1e-9;
@@ -498,6 +498,11 @@ export default function App() {
     return Math.min((width - 2 * pad) / wu, (height - 2 * pad) / hu);
   }, [bounds]);
   const toSvg = (p) => ({ x: pad + (p.x - bounds.minX) * scale, y: height - pad - (p.y - bounds.minY) * scale });
+  // Inversa: de coords SVG a unidades del recinto; permite congelar bounds/scale durante drag
+  const fromSvg = (sx, sy, frozenBounds = bounds, frozenScale = scale) => ({
+    x: frozenBounds.minX + (sx - pad) / frozenScale,
+    y: frozenBounds.minY + (height - pad - sy) / frozenScale,
+  });
 
   // Celdas XY válidas y niveles Z válidos
   const xyCells = useMemo(() => {
@@ -774,6 +779,76 @@ export default function App() {
   const area = useMemo(() => polygonArea(vertices), [vertices]);
   const volumen = useMemo(() => area * alturaZ, [area, alturaZ]);
 
+  // ===== Drag & Drop (puntos y vértices) =====
+  const svgRef = useRef(null);
+  const dragRef = useRef(null); // { kind: 'V'|'F1'|'F2'|'P', index?: number, bounds, scale, pointerId }
+
+  const beginDrag = (e, payload) => {
+    try {
+      // snapshot para undo/redo al iniciar el drag
+      setPast((p) => [...p, takeSnapshot()]);
+      setFuture([]);
+    } catch {}
+    dragRef.current = {
+      ...payload,
+      bounds: { ...bounds },
+      scale,
+      pointerId: e.pointerId,
+    };
+    // Evitar gestos táctiles por defecto
+    e.preventDefault();
+    e.stopPropagation();
+    // Captura opcional en el SVG
+    try { svgRef.current && svgRef.current.setPointerCapture && svgRef.current.setPointerCapture(e.pointerId); } catch {}
+  };
+
+  const handlePointerMove = (e) => {
+    const drag = dragRef.current;
+    if (!drag || !svgRef.current) return;
+    e.preventDefault();
+    // Obtener coords SVG
+    const rect = svgRef.current.getBoundingClientRect();
+    const sx = e.clientX - rect.left;
+    const sy = e.clientY - rect.top;
+    const w = fromSvg(sx, sy, drag.bounds, drag.scale);
+    const nx = round01(w.x);
+    const ny = round01(w.y);
+
+    if (drag.kind === 'V') {
+      const idx = drag.index;
+      setVertices((V) => {
+        const curr = V[idx];
+        if (!curr || (curr.x === nx && curr.y === ny)) return V;
+        const next = V.map((p, k) => (k === idx ? { ...p, x: nx, y: ny } : p));
+        return next;
+      });
+      return;
+    }
+    if (drag.kind === 'F1') {
+      setF1((p) => (p.x === nx && p.y === ny ? p : { ...p, x: nx, y: ny }));
+      return;
+    }
+    if (drag.kind === 'F2') {
+      setF2((p) => (p.x === nx && p.y === ny ? p : { ...p, x: nx, y: ny }));
+      return;
+    }
+    if (drag.kind === 'P') {
+      const idx = drag.index;
+      setBlue((B) => {
+        const curr = B[idx];
+        if (!curr || (curr.x === nx && curr.y === ny)) return B;
+        return B.map((p, k) => (k === idx ? { ...p, x: nx, y: ny } : p));
+      });
+      return;
+    }
+  };
+
+  const endDrag = (e) => {
+    if (!dragRef.current) return;
+    try { svgRef.current && svgRef.current.releasePointerCapture && svgRef.current.releasePointerCapture(dragRef.current.pointerId); } catch {}
+    dragRef.current = null;
+  };
+
   // ===== Distancias (matriz 3D) =====
   const pointList = useMemo(() => {
     const arr = [];
@@ -906,7 +981,9 @@ export default function App() {
                   setFuture([]);
                   setVertices((v) => [...v, { x: 0, y: 0 }]);
                 }}
-                className="px-2 py-0.5 border rounded hover:bg-gray-50 text-xs"
+                disabled={vertices.length >= 14}
+                title={vertices.length >= 14 ? "Máximo 14 vértices" : "+ vértice"}
+                className={`px-2 py-0.5 border rounded text-xs ${vertices.length >= 14 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}`}
               >
                 + vértice
               </button>
@@ -1048,7 +1125,15 @@ export default function App() {
       {/* Dibujo + tabla */}
       <div className="flex gap-4 items-start">
         <div className="p-3 rounded-xl shadow bg-white border">
-          <svg width={width} height={height}>
+          <svg
+            ref={svgRef}
+            width={width}
+            height={height}
+            onPointerMove={handlePointerMove}
+            onPointerUp={endDrag}
+            onPointerLeave={endDrag}
+            style={{ touchAction: 'none' }}
+          >
             {/* Relleno del recinto debajo de la rejilla */}
             <polygon
               points={vertices.map((v) => { const s = toSvg(v); return `${s.x},${s.y}`; }).join(" ")}
@@ -1071,18 +1156,25 @@ export default function App() {
               const label = idxToLetter(i);
               return (
                 <g key={`V-${i}`}>
-                  <circle cx={s.x} cy={s.y} r={3} fill="#111" />
+                  <circle
+                    cx={s.x}
+                    cy={s.y}
+                    r={5}
+                    fill="#111"
+                    style={{ cursor: 'grab' }}
+                    onPointerDown={(e) => beginDrag(e, { kind: 'V', index: i })}
+                  />
                   <text x={s.x + 6} y={s.y - 6} fontSize={11} fill="#111">{label}</text>
                 </g>
               );
             })}
 
             {(() => {
-              const draw = (p, label, color, rings, active) => {
+              const draw = (p, label, color, rings, active, dragPayload) => {
                 const s = toSvg(p);
                 const groupOpacity = active ? 1 : 0.35; // atenuado cuando la fuente está desactivada
                 return (
-                  <g key={label} opacity={groupOpacity}>
+                  <g key={label} opacity={groupOpacity} style={{ cursor: 'grab' }} onPointerDown={(e) => beginDrag(e, dragPayload)}>
                     {Object.entries(rings)
                       .filter(([, on]) => on)
                       .map(([rr]) => (
@@ -1095,9 +1187,9 @@ export default function App() {
               };
 
               return [
-                draw(F1, `F1 (${F1.x.toFixed(1)}, ${F1.y.toFixed(1)}, ${F1.z.toFixed(1)})`, "#e11d48", ringsRed, activeF1),
-                draw(F2, `F2 (${F2.x.toFixed(1)}, ${F2.y.toFixed(1)}, ${F2.z.toFixed(1)})`, "#e11d48", ringsRed, activeF2),
-                ...blue.map((b, i) => draw(b, `P${i + 1} (${b.x.toFixed(1)}, ${b.y.toFixed(1)}, ${b.z.toFixed(1)})`, "#2563eb", ringsBlue, true)),
+                draw(F1, `F1 (${F1.x.toFixed(1)}, ${F1.y.toFixed(1)}, ${F1.z.toFixed(1)})`, "#e11d48", ringsRed, activeF1, { kind: 'F1' }),
+                draw(F2, `F2 (${F2.x.toFixed(1)}, ${F2.y.toFixed(1)}, ${F2.z.toFixed(1)})`, "#e11d48", ringsRed, activeF2, { kind: 'F2' }),
+                ...blue.map((b, i) => draw(b, `P${i + 1} (${b.x.toFixed(1)}, ${b.y.toFixed(1)}, ${b.z.toFixed(1)})`, "#2563eb", ringsBlue, true, { kind: 'P', index: i })),
               ];
             })()}
           </svg>
