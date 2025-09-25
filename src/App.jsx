@@ -857,21 +857,41 @@ export default function App() {
     blue.forEach((b, i) => arr.push({ name: `P${i + 1}`, p: b, color: "#2563eb" }));
     return arr;
   }, [F1, F2, blue, activeF1, activeF2]);
+  // Lista para la tabla: incluye placeholders de P1..P5 aunque no existan (p = null)
+  const pointListTable = useMemo(() => {
+    const arr = [];
+    // Siempre incluir F1/F2; si están inactivas, p=null para mostrar "--"
+    arr.push({ name: "F1", p: activeF1 ? F1 : null, color: "#e11d48" });
+    arr.push({ name: "F2", p: activeF2 ? F2 : null, color: "#e11d48" });
+    const maxP = 5;
+    for (let i = 0; i < maxP; i++) {
+      const b = blue[i] || null;
+      arr.push({ name: `P${i + 1}`, p: b, color: "#2563eb" });
+    }
+    return arr;
+  }, [F1, F2, blue, activeF1, activeF2]);
 
   const distMatrix = useMemo(() => {
-    const n = pointList.length;
-    const M = Array.from({ length: n }, () => Array(n).fill("—"));
+    const n = pointListTable.length;
+    const M = Array.from({ length: n }, () => Array(n).fill("--"));
     for (let i = 0; i < n; i++) {
-      M[i][i] = "0.00";
-      for (let j = i + 1; j < n; j++) {
-        const d = dist3D(pointList[i].p, pointList[j].p);
-        const s = d.toFixed(2);
-        M[i][j] = s;
-        M[j][i] = s;
+      for (let j = i; j < n; j++) {
+        const Ai = pointListTable[i];
+        const Bj = pointListTable[j];
+        if (Ai.p && Bj.p) {
+          const d = i === j ? 0 : dist3D(Ai.p, Bj.p);
+          const s = d.toFixed(2);
+          M[i][j] = s;
+          M[j][i] = s;
+        } else {
+          // al menos uno sin datos => "--"
+          M[i][j] = "--";
+          M[j][i] = "--";
+        }
       }
     }
     return M;
-  }, [pointList]);
+  }, [pointListTable]);
 
   const minPair = useMemo(() => {
     let best = { a: null, b: null, d: Infinity };
@@ -888,10 +908,11 @@ export default function App() {
   const distViol = useMemo(() => {
     const pairs = new Set();
     const msgs = [];
-    const N = pointList.length;
+    const N = pointListTable.length;
     for (let i = 0; i < N; i++) {
       for (let j = i + 1; j < N; j++) {
-        const A = pointList[i], B = pointList[j];
+        const A = pointListTable[i], B = pointListTable[j];
+        if (!A.p || !B.p) continue; // sin datos => sin chequeo ni mensaje
         const nameA = A.name, nameB = B.name;
         const isFA = nameA.startsWith("F");
         const isFB = nameB.startsWith("F");
@@ -926,7 +947,7 @@ export default function App() {
       }
     }
     return { pairs, msgs };
-  }, [pointList]);
+  }, [pointListTable]);
 
   return (
     <div className="p-6 space-y-4">
@@ -1053,72 +1074,76 @@ export default function App() {
         {/* Tabla de distancias (3D) */}
         <section className="p-2 rounded-xl shadow bg-white border text-sm self-start w-fit">
           <h2 className="text-base font-medium mb-2">Tabla de distancias (3D)</h2>
-          {pointList.length >= 2 ? (
-            <div>
-              <div className="text-[11px] text-gray-600 mb-2">
-                Distancia en línea recta entre todos los puntos activos. {minPair ? (
-                  <span>
-                    Mínima actual: <b>{minPair.a}</b>–<b>{minPair.b}</b> = {minPair.d.toFixed(2)} m
-                  </span>
-                ) : null}
-              </div>
-              <div className="overflow-auto max-h-64">
-                <table className="text-xs border w-full min-w-[360px]">
-                  <thead>
-                    <tr>
-                      <th className="px-2 py-1">•</th>
-                      {pointList.map((pt) => (
-                        <th key={pt.name} className="px-2 py-1 text-right" style={{ color: pt.color }}>{pt.name}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pointList.map((row, i) => (
-                      <tr key={row.name}>
-                        <td className="px-2 py-1 font-medium" style={{ color: row.color }}>{row.name}</td>
-                        {pointList.map((col, j) => {
-                          const dStr = distMatrix[i][j];
-                          const dVal = parseFloat(dStr);
-                          const isDiag = i === j;
-                          const isMinPair =
-                            !!minPair &&
-                            ((row.name === minPair.a && col.name === minPair.b) ||
-                              (row.name === minPair.b && col.name === minPair.a));
-                          const pairKey = `${Math.min(i, j)}-${Math.max(i, j)}`;
-                          const isViol = !isDiag && distViol?.pairs?.has(pairKey);
-                          const underTwo = !isDiag && Number.isFinite(dVal) && dVal < 2;
-
-                          // Prioridad de estilos: diagonal < mínimo (amarillo) < violación (rose) < <2m (rojo suave)
-                          const bgClass = isDiag
-                            ? ""
-                            : isMinPair
-                            ? "bg-yellow-50"
-                            : isViol
-                            ? "bg-rose-50"
-                            : underTwo
-                            ? "bg-red-50"
-                            : "";
-                          const textClass = isDiag
-                            ? "text-gray-400"
-                            : isViol
-                            ? "text-rose-700 font-semibold"
-                            : "";
-
-                          return (
-                            <td key={col.name} className={`px-2 py-1 text-right ${textClass} ${bgClass}`}>
-                              {dStr}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+          <div>
+            <div className="text-[11px] text-gray-600 mb-2">
+              Distancia en línea recta entre todos los puntos activos. {minPair ? (
+                <span>
+                  Mínima actual: <b>{minPair.a}</b>–<b>{minPair.b}</b> = {minPair.d.toFixed(2)} m
+                </span>
+              ) : null}
             </div>
-          ) : (
-            <div className="text-xs text-gray-500">Añade al menos dos puntos (p. ej. activar F1/F2 o generar P1–P5).</div>
-          )}
+            <div className="overflow-auto max-h-64">
+              <table className="text-xs border table-fixed w-[520px]">
+                <thead>
+                  <tr>
+                    <th className="px-2 py-1 w-10 h-7">•</th>
+                    {pointListTable.map((pt) => (
+                      <th
+                        key={pt.name}
+                        className={`px-2 py-1 text-right w-14 h-7 whitespace-nowrap ${!pt.p ? 'text-gray-400' : ''}`}
+                        style={{ color: pt.p ? pt.color : undefined }}
+                      >
+                        {pt.name}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {pointListTable.map((row, i) => (
+                    <tr key={row.name}>
+                      <td className="px-2 py-1 font-medium w-10 h-7 whitespace-nowrap" style={{ color: row.p ? row.color : undefined, opacity: row.p ? 1 : 0.6 }}>{row.name}</td>
+                      {pointListTable.map((col, j) => {
+                        const dStr = distMatrix[i][j];
+                        const hasData = !!(row.p && col.p);
+                        const dVal = parseFloat(dStr);
+                        const isDiag = i === j;
+                        const diagWithData = isDiag && hasData;
+                        const isMinPair =
+                          !!minPair &&
+                          ((row.name === minPair.a && col.name === minPair.b) ||
+                            (row.name === minPair.b && col.name === minPair.a));
+                        const pairKey = `${Math.min(i, j)}-${Math.max(i, j)}`;
+                        const isViol = !isDiag && hasData && distViol?.pairs?.has(pairKey);
+                        const underTwo = !isDiag && hasData && Number.isFinite(dVal) && dVal < 2;
+
+                        // Prioridad de estilos: diagonal con datos < mínimo (amarillo) < violación (rose) < <2m (rojo suave)
+                        const bgClass = diagWithData
+                          ? ""
+                          : isMinPair
+                          ? "bg-yellow-50"
+                          : isViol
+                          ? "bg-rose-50"
+                          : underTwo
+                          ? "bg-red-50"
+                          : "";
+                        const textClass = diagWithData
+                          ? "text-gray-400"
+                          : isViol
+                          ? "text-rose-700 font-semibold"
+                          : "";
+
+                        return (
+                          <td key={col.name} className={`px-2 py-1 text-right h-7 ${textClass} ${bgClass}`}>
+                            {dStr}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </section>
       </div>
 
