@@ -596,7 +596,7 @@ export default function App() {
       }
       if (minDistToEdges2D(p, vertices) < MARGIN - EPS) {
         t.x = t.y = true;
-        t.msg.push("A <0,5 del borde (XY)");
+        t.msg.push("A < 0.5 del borde (XY)");
       }
       if (p.z < MARGIN || p.z > alturaZ - MARGIN) {
         t.z = true;
@@ -614,18 +614,18 @@ export default function App() {
         dz = Math.abs(F1.z - F2.z);
       if (dx < 0.7) {
         v.F1.x = v.F2.x = true;
-        v.F1.msg.push(`F1–F2: |X| = ${dx.toFixed(2)} < 0,7 m`);
-        v.F2.msg.push(`F1–F2: |X| = ${dx.toFixed(2)} < 0,7 m`);
+        v.F1.msg.push(`F1–F2: |X| = ${dx.toFixed(1)} < 0.7 m`);
+        v.F2.msg.push(`F1–F2: |X| = ${dx.toFixed(1)} < 0.7 m`);
       }
       if (dy < 0.7) {
         v.F1.y = v.F2.y = true;
-        v.F1.msg.push(`F1–F2: |Y| = ${dy.toFixed(2)} < 0,7 m`);
-        v.F2.msg.push(`F1–F2: |Y| = ${dy.toFixed(2)} < 0,7 m`);
+        v.F1.msg.push(`F1–F2: |Y| = ${dy.toFixed(1)} < 0.7 m`);
+        v.F2.msg.push(`F1–F2: |Y| = ${dy.toFixed(1)} < 0.7 m`);
       }
       if (dz < 0.7) {
         v.F1.z = v.F2.z = true;
-        v.F1.msg.push(`F1–F2: |Z| = ${dz.toFixed(2)} < 0,7 m`);
-        v.F2.msg.push(`F1–F2: |Z| = ${dz.toFixed(2)} < 0,7 m`);
+        v.F1.msg.push(`F1–F2: |Z| = ${dz.toFixed(1)} < 0.7 m`);
+        v.F2.msg.push(`F1–F2: |Z| = ${dz.toFixed(1)} < 0.7 m`);
       }
     }
 
@@ -633,11 +633,11 @@ export default function App() {
     blue.forEach((b, i) => {
       if (activeF1 && dist3D(b, F1) < MIN_RED_BLUE) {
         v.blue[i].x = v.blue[i].y = v.blue[i].z = true;
-        v.blue[i].msg.push(`Distancia a F1 < 1,0 (=${dist3D(b, F1).toFixed(2)} m)`);
+        v.blue[i].msg.push(`Distancia a F1 < 1.0 (=${dist3D(b, F1).toFixed(1)} m)`);
       }
       if (activeF2 && dist3D(b, F2) < MIN_RED_BLUE) {
         v.blue[i].x = v.blue[i].y = v.blue[i].z = true;
-        v.blue[i].msg.push(`Distancia a F2 < 1,0 (=${dist3D(b, F2).toFixed(2)} m)`);
+        v.blue[i].msg.push(`Distancia a F2 < 1.0 (=${dist3D(b, F2).toFixed(1)} m)`);
       }
     });
     for (let i = 0; i < blue.length; i++)
@@ -646,8 +646,8 @@ export default function App() {
         if (d < MIN_BLUE_BLUE) {
           v.blue[i].x = v.blue[i].y = v.blue[i].z = true;
           v.blue[j].x = v.blue[j].y = v.blue[j].z = true;
-          v.blue[i].msg.push(`P${i + 1}–P${j + 1} < 0,7 (=${d.toFixed(2)} m)`);
-          v.blue[j].msg.push(`P${i + 1}–P${j + 1} < 0,7 (=${d.toFixed(2)} m)`);
+          v.blue[i].msg.push(`P${i + 1}–P${j + 1} < 0.7 (=${d.toFixed(1)} m)`);
+          v.blue[j].msg.push(`P${i + 1}–P${j + 1} < 0.7 (=${d.toFixed(1)} m)`);
         }
       }
 
@@ -666,7 +666,7 @@ export default function App() {
     const out = [];
     // márgenes y polígono
     pts.forEach((p, i) => {
-      if (!pointInPolygon(p, vertices) || minDistToEdges2D(p, vertices) < MARGIN - EPS) out.push(`P${i + 1} fuera del polígono o a <0,5 m del borde`);
+      if (!pointInPolygon(p, vertices) || minDistToEdges2D(p, vertices) < MARGIN - EPS) out.push(`P${i + 1} fuera del polígono o a < 0.5 m del borde`);
       if (p.z < MARGIN || p.z > alturaZ - MARGIN) out.push(`P${i + 1} con Z fuera de márgenes`);
     });
     // duplicidades por ejes (X/Y entre todos; Z solo entre Pxs)
@@ -690,17 +690,17 @@ export default function App() {
     pts.forEach((p, i) => {
       if (activeF1) {
         const d = dist3D(p, F1);
-        if (d < MIN_RED_BLUE) out.push(`P${i + 1} a F1 = ${d.toFixed(2)} < 1,0 m`);
+        if (d < MIN_RED_BLUE) out.push(`P${i + 1} a F1 = ${d.toFixed(1)} < 1.0 m`);
       }
       if (activeF2) {
         const d = dist3D(p, F2);
-        if (d < MIN_RED_BLUE) out.push(`P${i + 1} a F2 = ${d.toFixed(2)} < 1,0 m`);
+        if (d < MIN_RED_BLUE) out.push(`P${i + 1} a F2 = ${d.toFixed(1)} < 1.0 m`);
       }
     });
     for (let i = 0; i < pts.length; i++)
       for (let j = i + 1; j < pts.length; j++) {
         const d = dist3D(pts[i], pts[j]);
-        if (d < MIN_BLUE_BLUE) out.push(`P${i + 1}–P${j + 1} = ${d.toFixed(2)} < 0,7 m`);
+        if (d < MIN_BLUE_BLUE) out.push(`P${i + 1}–P${j + 1} = ${d.toFixed(1)} < 0.7 m`);
       }
     return Array.from(new Set(out));
   };
@@ -768,14 +768,14 @@ export default function App() {
       const sx = pad + (x - bounds.minX) * scale;
       els.push(<line key={"GX" + x} x1={sx} y1={pad} x2={sx} y2={height - pad} stroke="#c7cdd6" />);
       els.push(
-        <text key={"TX" + x} x={sx} y={height - pad + 14} fontSize={10} textAnchor="middle" fill="#666">{x.toFixed(1)}</text>
+        <text key={"TX" + x} x={sx} y={height - pad + 14} fontSize={12} textAnchor="middle" fill="#666">{x.toFixed(1)}</text>
       );
     }
     for (let y = Math.ceil(bounds.minY / 0.5) * 0.5; y <= bounds.maxY + EPS; y += 0.5) {
       const sy = height - pad - (y - bounds.minY) * scale;
       els.push(<line key={"GY" + y} x1={pad} y1={sy} x2={width - pad} y2={sy} stroke="#c7cdd6" />);
       els.push(
-        <text key={"TY" + y} x={pad - 8} y={sy + 3} fontSize={10} textAnchor="end" fill="#666">{y.toFixed(1)}</text>
+        <text key={"TY" + y} x={pad - 8} y={sy + 3} fontSize={12} textAnchor="end" fill="#666">{y.toFixed(1)}</text>
       );
     }
     const O = { x: pad + (0 - bounds.minX) * scale, y: height - pad - (0 - bounds.minY) * scale };
@@ -935,24 +935,24 @@ export default function App() {
           const dy = Math.abs(A.p.y - B.p.y);
           const dz = Math.abs(A.p.z - B.p.z);
           const parts = [];
-          if (dx < 0.7) parts.push(`|X|=${dx.toFixed(2)}`);
-          if (dy < 0.7) parts.push(`|Y|=${dy.toFixed(2)}`);
-          if (dz < 0.7) parts.push(`|Z|=${dz.toFixed(2)}`);
+          if (dx < 0.7) parts.push(`|X|=${dx.toFixed(1)}`);
+          if (dy < 0.7) parts.push(`|Y|=${dy.toFixed(1)}`);
+          if (dz < 0.7) parts.push(`|Z|=${dz.toFixed(1)}`);
           if (parts.length) {
             pairs.add(`${i}-${j}`);
-            msgs.push(`${nameA}–${nameB}: ${parts.join(", ")} < 0,7 m`);
+            msgs.push(`${nameA}–${nameB}: ${parts.join(", ")} < 0.7 m`);
           }
         } else if ((isFA && isPB) || (isFB && isPA)) {
           const d = dist3D(A.p, B.p);
           if (d < 1.0) {
             pairs.add(`${i}-${j}`);
-            msgs.push(`${nameA}–${nameB} = ${d.toFixed(2)} < 1,0 m (3D)`);
+            msgs.push(`${nameA}–${nameB} = ${d.toFixed(1)} < 1.0 m (3D)`);
           }
         } else if (isPA && isPB) {
           const d = dist3D(A.p, B.p);
           if (d < 0.7) {
             pairs.add(`${i}-${j}`);
-            msgs.push(`${nameA}–${nameB} = ${d.toFixed(2)} < 0,7 m (3D)`);
+            msgs.push(`${nameA}–${nameB} = ${d.toFixed(1)} < 0.7 m (3D)`);
           }
         }
       }
@@ -962,14 +962,14 @@ export default function App() {
 
   return (
     <div className="p-6 space-y-4">
-      <h1 className="text-xl font-semibold text-white">Distribución de Puntos Acústicos - UNE EN ISO 16283-1-2015 - Medidas de aislamiento a ruido aéreo</h1>
+      <h1 className="text-14 font-semibold text-white">Distribución de Puntos Acústicos - UNE EN ISO 16283-1-2015 - Medidas de aislamiento a ruido aéreo</h1>
 
       <div className="grid gap-4 items-stretch" style={{ gridTemplateColumns: `${leftColW}px ${rightColW}px` }}>
         {/* Columna izquierda (fila superior): Datos + Círculos, igual ancho que el gráfico */}
         <div className="flex gap-4 h-full" style={{ width: leftColW }}>
         {/* Datos del recinto */}
         <section className="p-2 rounded-xl shadow bg-white border text-sm self-start flex-1 h-full">
-          <h2 className="text-base font-medium mb-2">Datos del recinto</h2>
+          <h2 className="text-13 font-medium mb-2">Datos del recinto</h2>
           {vertices.map((v, i) => (
             <div key={i} className="flex items-center gap-2 mb-1 text-xs">
               <span className="w-5 text-gray-500">{idxToLetter(i)}</span>
@@ -1034,27 +1034,26 @@ export default function App() {
                 className="w-24 border rounded px-1"
               />
             </div>
-            <div className="text-xs text-gray-600">
-              Área: {area.toFixed(2)} · Volumen: {volumen.toFixed(2)}
-            </div>
+            <div className="text-12 text-black">Área: {area.toFixed(1)} m²</div>
+            <div className="text-12 text-black">Volumen: {volumen.toFixed(1)} m³</div>
           </div>
         </section>
 
         {/* Círculos de distancia */}
         <section className="p-2 rounded-xl shadow bg-white border text-sm self-start flex-1 h-full">
-          <h2 className="text-base font-medium mb-2">Círculos de distancia</h2>
-          <table className="text-xs border w-full">
+          <h2 className="text-13 font-medium mb-2">Círculos de distancia</h2>
+          <table className="text-12 border w-full">
             <thead>
               <tr>
-                <th className="px-2">r</th>
-                <th className="px-2">Fuentes</th>
-                <th className="px-2">Puntos de medida</th>
+                <th className="px-2 text-center">r</th>
+                <th className="px-2 text-center">Fuentes</th>
+                <th className="px-2 text-center">Puntos de medida</th>
               </tr>
             </thead>
             <tbody>
               {radii.map((r) => (
                 <tr key={r}>
-                  <td className="px-2 py-1">{r.toFixed(1)} m</td>
+                  <td className="px-2 py-1 text-center">{r.toFixed(1)} m</td>
                   <td className="px-2 text-center">
                     <input
                       type="checkbox"
@@ -1087,9 +1086,9 @@ export default function App() {
 
         {/* Columna derecha (fila superior): Tabla de distancias, mismo ancho que tabla puntos */}
         <section className="p-3 rounded-xl shadow bg-white border text-sm self-start" style={{ width: rightColW }}>
-          <h2 className="text-base font-medium mb-2">Tabla de distancias (3D)</h2>
+          <h2 className="text-13 font-medium mb-2">Tabla de distancias (3D)</h2>
           <div>
-            <div className="text-[11px] text-gray-600 mb-2">
+            <div className="text-12 text-gray-600 mb-2">
               Distancia en línea recta entre todos los puntos activos. {minPair ? (
                 <span>
                   Mínima actual: <b>{minPair.a}</b>–<b>{minPair.b}</b> = {minPair.d.toFixed(1)} m
@@ -1097,7 +1096,7 @@ export default function App() {
               ) : null}
             </div>
             <div className="overflow-x-hidden overflow-y-auto max-h-64">
-              <table className="text-[11px] border table-fixed" style={{ width: tableW }}>
+              <table className="text-12 border table-fixed" style={{ width: tableW }}>
                 <thead>
                   <tr>
                     <th className="px-1 py-1 h-7 whitespace-nowrap">•</th>
@@ -1204,7 +1203,7 @@ export default function App() {
                     style={{ cursor: 'grab' }}
                     onPointerDown={(e) => beginDrag(e, { kind: 'V', index: i })}
                   />
-                  <text x={s.x + 6} y={s.y - 6} fontSize={11} fill="#111">{label}</text>
+                  <text x={s.x + 6} y={s.y - 6} fontSize={12} fill="#111">{label}</text>
                 </g>
               );
             })}
@@ -1221,7 +1220,7 @@ export default function App() {
                         <circle key={rr} cx={s.x} cy={s.y} r={parseFloat(rr) * scale} fill="none" stroke={color} opacity={0.35} />
                       ))}
                     <circle cx={s.x} cy={s.y} r={5} fill={color} />
-                    <text x={s.x + 6} y={s.y - 6} fontSize={11} fill={color}>{label}</text>
+                    <text x={s.x + 6} y={s.y - 6} fontSize={12} fill={color}>{label}</text>
                   </g>
                 );
               };
@@ -1237,16 +1236,16 @@ export default function App() {
 
         <div className="flex flex-col gap-4">
           <section className="p-3 rounded-xl shadow bg-white border text-sm" style={{ width: rightColW }}>
-          <h2 className="text-base font-medium mb-2">Tabla de puntos</h2>
+          <h2 className="text-13 font-medium mb-2">Tabla de puntos</h2>
 
-          <table className="text-xs border table-fixed" style={{ width: tableW }}>
+          <table className="text-12 border table-fixed" style={{ width: tableW }}>
             <thead>
               <tr>
-                <th className="px-2 h-7 w-16">Activa</th>
-                <th className="px-2 h-7 w-20">Punto</th>
-                <th className="px-2 h-7 w-16">X</th>
-                <th className="px-2 h-7 w-16">Y</th>
-                <th className="px-2 h-7 w-16">Z</th>
+                <th className="px-2 h-7 w-16 text-center">Activa</th>
+                <th className="px-2 h-7 w-20 text-left">Punto</th>
+                <th className="px-2 h-7 w-16 text-center">X</th>
+                <th className="px-2 h-7 w-16 text-center">Y</th>
+                <th className="px-2 h-7 w-16 text-center">Z</th>
               </tr>
             </thead>
             <tbody>
@@ -1266,8 +1265,8 @@ export default function App() {
                       }}
                     />
                   </td>
-                  <td className="px-2 font-medium h-7">{row.name}</td>
-                  <td className="px-2 h-7">
+                  <td className="px-2 font-medium h-7 text-left">{row.name}</td>
+                  <td className="px-2 h-7 text-center">
                     <NumInput
                       value={row.val.x}
                       onCommit={(val) => {
@@ -1279,7 +1278,7 @@ export default function App() {
                       title={row.v.msg.join("\n")}
                     />
                   </td>
-                  <td className="px-2 h-7">
+                  <td className="px-2 h-7 text-center">
                     <NumInput
                       value={row.val.y}
                       onCommit={(val) => {
@@ -1291,7 +1290,7 @@ export default function App() {
                       title={row.v.msg.join("\n")}
                     />
                   </td>
-                  <td className="px-2 h-7">
+                  <td className="px-2 h-7 text-center">
                     <NumInput
                       value={row.val.z}
                       onCommit={(val) => {
@@ -1309,7 +1308,7 @@ export default function App() {
                 <tr key={i} className={!blueActive ? 'opacity-60' : ''}>
                   <td className="px-2 text-center h-7">—</td>
                   <td className="px-2 h-7">{`P${i + 1}`}</td>
-                  <td className="px-2 h-7">
+                  <td className="px-2 h-7 text-center">
                     <NumInput
                       value={b.x}
                       onCommit={(val) => {
@@ -1322,7 +1321,7 @@ export default function App() {
                       title={(viol.blue[i]?.msg || []).join("\n")}
                     />
                   </td>
-                  <td className="px-2 h-7">
+                  <td className="px-2 h-7 text-center">
                     <NumInput
                       value={b.y}
                       onCommit={(val) => {
@@ -1335,7 +1334,7 @@ export default function App() {
                       title={(viol.blue[i]?.msg || []).join("\n")}
                     />
                   </td>
-                  <td className="px-2 h-7">
+                  <td className="px-2 h-7 text-center">
                     <NumInput
                       value={b.z}
                       onCommit={(val) => {
@@ -1409,7 +1408,7 @@ export default function App() {
               for (const [k, names] of map) if (names.length > 1) list.push(`${axis.toUpperCase()} repetida (= ${k}) entre ${names.join(", ")}`);
             });
 
-            // Añadir avisos por distancias (F–F por ejes; F–P 3D <1,0; P–P 3D <0,7)
+            // Añadir avisos por distancias (F–F por ejes; F–P 3D <1.0; P–P 3D <0.7)
             distViol.msgs.forEach((m) => list.push(m));
 
             const uniq = Array.from(new Set(list));
@@ -1421,7 +1420,7 @@ export default function App() {
             ) : null;
           })()}
 
-          <div className="mt-3 text-[12px] text-black">
+          <div className="mt-3 text-12 text-black">
             <div className="font-medium mb-1">Reglas:</div>
             <div className="mb-1"><span className="font-medium">❖ Coordenadas:</span> No puede repetirse</div>
             <ul className="list-none pl-4 space-y-0.5">
@@ -1431,10 +1430,10 @@ export default function App() {
             </ul>
             <div className="mt-2 mb-1"><span className="font-medium">❖ Distancias mínimas:</span></div>
             <ul className="list-none pl-4 space-y-0.5">
-              <li>➤ Todos (Fuente y Punto) ≥ 0,5 m a todas las caras (incluye Z).</li>
-              <li>➤ Fuente – Fuente ≥ 0,7 m en todos los ejes.</li>
-              <li>➤ Fuente – Punto ≥ 1,0 m (3D).</li>
-              <li>➤ Punto – Punto ≥ 0,7 m (3D).</li>
+              <li>➤ Todos (Fuente y Punto) ≥ 0.5 m a todas las caras (incluye Z).</li>
+              <li>➤ Fuente – Fuente ≥ 0.7 m en todos los ejes.</li>
+              <li>➤ Fuente – Punto ≥ 1.0 m (3D).</li>
+              <li>➤ Punto – Punto ≥ 0.7 m (3D).</li>
             </ul>
           </div>
           </section>
