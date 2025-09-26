@@ -962,14 +962,14 @@ export default function App() {
 
   return (
     <div className="p-6 space-y-4">
-      <h1 className="text-13 font-semibold text-white">Distribución de Puntos Acústicos - UNE EN ISO 16283-1-2015 - Medidas de aislamiento a ruido aéreo</h1>
+      <h1 className="text-xl font-semibold text-white">Distribución de Puntos Acústicos - UNE EN ISO 16283-1-2015 - Medidas de aislamiento a ruido aéreo</h1>
 
       <div className="grid gap-4 items-stretch" style={{ gridTemplateColumns: `${leftColW}px ${rightColW}px` }}>
         {/* Columna izquierda (fila superior): Datos + Círculos, igual ancho que el gráfico */}
         <div className="flex gap-4 h-full" style={{ width: leftColW }}>
         {/* Datos del recinto */}
         <section className="p-2 rounded-xl shadow bg-white border text-sm self-start flex-1 h-full">
-          <h2 className="text-12 font-medium mb-2">Datos del recinto</h2>
+          <h2 className="text-base font-medium mb-2">Datos del recinto</h2>
           {vertices.map((v, i) => (
             <div key={i} className="flex items-center gap-2 mb-1 text-xs">
               <span className="w-5 text-gray-500">{idxToLetter(i)}</span>
@@ -1034,26 +1034,27 @@ export default function App() {
                 className="w-24 border rounded px-1"
               />
             </div>
-            <div className="text-11 text-black">Área: {area.toFixed(2)}</div>
-            <div className="text-11 text-black">Volumen: {volumen.toFixed(2)}</div>
+            <div className="text-xs text-gray-600">
+              Área: {area.toFixed(2)} · Volumen: {volumen.toFixed(2)}
+            </div>
           </div>
         </section>
 
         {/* Círculos de distancia */}
         <section className="p-2 rounded-xl shadow bg-white border text-sm self-start flex-1 h-full">
-          <h2 className="text-12 font-medium mb-2">Círculos de distancia</h2>
+          <h2 className="text-base font-medium mb-2">Círculos de distancia</h2>
           <table className="text-xs border w-full">
             <thead>
               <tr>
-                <th className="px-2 text-center">r</th>
-                <th className="px-2 text-center">Fuentes</th>
-                <th className="px-2 text-center">Puntos de medida</th>
+                <th className="px-2">r</th>
+                <th className="px-2">Fuentes</th>
+                <th className="px-2">Puntos de medida</th>
               </tr>
             </thead>
             <tbody>
               {radii.map((r) => (
                 <tr key={r}>
-                  <td className="px-2 py-1 text-center">{r.toFixed(1)} m</td>
+                  <td className="px-2 py-1">{r.toFixed(1)} m</td>
                   <td className="px-2 text-center">
                     <input
                       type="checkbox"
@@ -1086,9 +1087,9 @@ export default function App() {
 
         {/* Columna derecha (fila superior): Tabla de distancias, mismo ancho que tabla puntos */}
         <section className="p-3 rounded-xl shadow bg-white border text-sm self-start" style={{ width: rightColW }}>
-          <h2 className="text-12 font-medium mb-2">Tabla de distancias (3D)</h2>
+          <h2 className="text-base font-medium mb-2">Tabla de distancias (3D)</h2>
           <div>
-            <div className="text-11 text-gray-600 mb-2">
+            <div className="text-[11px] text-gray-600 mb-2">
               Distancia en línea recta entre todos los puntos activos. {minPair ? (
                 <span>
                   Mínima actual: <b>{minPair.a}</b>–<b>{minPair.b}</b> = {minPair.d.toFixed(1)} m
@@ -1096,7 +1097,7 @@ export default function App() {
               ) : null}
             </div>
             <div className="overflow-x-hidden overflow-y-auto max-h-64">
-              <table className="text-11 border table-fixed" style={{ width: tableW }}>
+              <table className="text-[11px] border table-fixed" style={{ width: tableW }}>
                 <thead>
                   <tr>
                     <th className="px-1 py-1 h-7 whitespace-nowrap">•</th>
@@ -1203,7 +1204,7 @@ export default function App() {
                     style={{ cursor: 'grab' }}
                     onPointerDown={(e) => beginDrag(e, { kind: 'V', index: i })}
                   />
-                  <text x={s.x + 6} y={s.y - 6} fontSize={10} fill="#111">{label}</text>
+                  <text x={s.x + 6} y={s.y - 6} fontSize={11} fill="#111">{label}</text>
                 </g>
               );
             })}
@@ -1220,7 +1221,7 @@ export default function App() {
                         <circle key={rr} cx={s.x} cy={s.y} r={parseFloat(rr) * scale} fill="none" stroke={color} opacity={0.35} />
                       ))}
                     <circle cx={s.x} cy={s.y} r={5} fill={color} />
-                    <text x={s.x + 6} y={s.y - 6} fontSize={10} fill={color}>{label}</text>
+                    <text x={s.x + 6} y={s.y - 6} fontSize={11} fill={color}>{label}</text>
                   </g>
                 );
               };
@@ -1236,16 +1237,16 @@ export default function App() {
 
         <div className="flex flex-col gap-4">
           <section className="p-3 rounded-xl shadow bg-white border text-sm" style={{ width: rightColW }}>
-          <h2 className="text-12 font-medium mb-2">Tabla de puntos</h2>
+          <h2 className="text-base font-medium mb-2">Tabla de puntos</h2>
 
-          <table className="text-11 border table-fixed" style={{ width: tableW }}>
+          <table className="text-xs border table-fixed" style={{ width: tableW }}>
             <thead>
               <tr>
-                <th className="px-2 h-7 w-16 text-center">Activa</th>
-                <th className="px-2 h-7 w-20 text-left">Punto</th>
-                <th className="px-2 h-7 w-16 text-center">X</th>
-                <th className="px-2 h-7 w-16 text-center">Y</th>
-                <th className="px-2 h-7 w-16 text-center">Z</th>
+                <th className="px-2 h-7 w-16">Activa</th>
+                <th className="px-2 h-7 w-20">Punto</th>
+                <th className="px-2 h-7 w-16">X</th>
+                <th className="px-2 h-7 w-16">Y</th>
+                <th className="px-2 h-7 w-16">Z</th>
               </tr>
             </thead>
             <tbody>
@@ -1265,8 +1266,8 @@ export default function App() {
                       }}
                     />
                   </td>
-                  <td className="px-2 font-medium h-7 text-left">{row.name}</td>
-                  <td className="px-2 h-7 text-center">
+                  <td className="px-2 font-medium h-7">{row.name}</td>
+                  <td className="px-2 h-7">
                     <NumInput
                       value={row.val.x}
                       onCommit={(val) => {
@@ -1278,7 +1279,7 @@ export default function App() {
                       title={row.v.msg.join("\n")}
                     />
                   </td>
-                  <td className="px-2 h-7 text-center">
+                  <td className="px-2 h-7">
                     <NumInput
                       value={row.val.y}
                       onCommit={(val) => {
@@ -1290,7 +1291,7 @@ export default function App() {
                       title={row.v.msg.join("\n")}
                     />
                   </td>
-                  <td className="px-2 h-7 text-center">
+                  <td className="px-2 h-7">
                     <NumInput
                       value={row.val.z}
                       onCommit={(val) => {
@@ -1308,7 +1309,7 @@ export default function App() {
                 <tr key={i} className={!blueActive ? 'opacity-60' : ''}>
                   <td className="px-2 text-center h-7">—</td>
                   <td className="px-2 h-7">{`P${i + 1}`}</td>
-                  <td className="px-2 h-7 text-center">
+                  <td className="px-2 h-7">
                     <NumInput
                       value={b.x}
                       onCommit={(val) => {
@@ -1321,7 +1322,7 @@ export default function App() {
                       title={(viol.blue[i]?.msg || []).join("\n")}
                     />
                   </td>
-                  <td className="px-2 h-7 text-center">
+                  <td className="px-2 h-7">
                     <NumInput
                       value={b.y}
                       onCommit={(val) => {
@@ -1334,7 +1335,7 @@ export default function App() {
                       title={(viol.blue[i]?.msg || []).join("\n")}
                     />
                   </td>
-                  <td className="px-2 h-7 text-center">
+                  <td className="px-2 h-7">
                     <NumInput
                       value={b.z}
                       onCommit={(val) => {
