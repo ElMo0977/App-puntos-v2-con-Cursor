@@ -2,4 +2,35 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Fuente y tamaño globales */
+@layer base {
+  :root {
+    --app-font-family: 'Roboto Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+    --app-font-size: 11px; /* tamaño por defecto */
+    --app-font-weight: 400;
+  }
+  html, body {
+    font-family: var(--app-font-family);
+    font-size: var(--app-font-size);
+    font-weight: var(--app-font-weight);
+  }
+  *, *::before, *::after {
+    font-size: var(--app-font-size) !important;
+  }
+  body, input, button, select, textarea, table, th, td, label, h1, h2, h3, h4, h5, h6 {
+    font-family: var(--app-font-family) !important;
+    font-weight: var(--app-font-weight) !important;
+  }
+  svg text {
+    font-family: var(--app-font-family);
+    font-size: var(--app-font-size) !important;
+    font-weight: var(--app-font-weight);
+  }
+}
+
+/* Utilidades de tamaño específicas */
+.text-11 { font-size: 11px !important; }
+.text-12 { font-size: 12px !important; }
+.text-13 { font-size: 13px !important; }
+
 body { background: #000000; }

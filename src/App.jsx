@@ -484,6 +484,11 @@ export default function App() {
   const width = 700,
     height = 520,
     pad = 50;
+  // Layout: asegurar alineación entre columnas
+  const tableW = 420; // ancho de tablas (distancias y puntos)
+  const panelHPad = 24; // p-3 izquierda + derecha = 24px
+  const rightColW = tableW + panelHPad; // ancho total del panel derecho
+  const leftColW = width + panelHPad; // ancho total del panel del gráfico
   const bounds = useMemo(() => {
     const xs = vertices.map((v) => v.x),
       ys = vertices.map((v) => v.y);
@@ -883,7 +888,7 @@ export default function App() {
         const Bj = pointListTable[j];
         if (Ai.p && Bj.p) {
           const d = i === j ? 0 : dist3D(Ai.p, Bj.p);
-          const s = d.toFixed(2);
+          const s = d.toFixed(1);
           M[i][j] = s;
           M[j][i] = s;
         } else {
@@ -957,12 +962,14 @@ export default function App() {
 
   return (
     <div className="p-6 space-y-4">
-      <h1 className="text-xl font-semibold text-white">Distribución de Puntos Acústicos - UNE EN ISO 16283-1-2015 - Medidas de aislamiento a ruido aéreo</h1>
+      <h1 className="text-13 font-semibold text-white">Distribución de Puntos Acústicos - UNE EN ISO 16283-1-2015 - Medidas de aislamiento a ruido aéreo</h1>
 
-      <div className="flex flex-wrap gap-4 items-start">
+      <div className="grid gap-4 items-stretch" style={{ gridTemplateColumns: `${leftColW}px ${rightColW}px` }}>
+        {/* Columna izquierda (fila superior): Datos + Círculos, igual ancho que el gráfico */}
+        <div className="flex gap-4 h-full" style={{ width: leftColW }}>
         {/* Datos del recinto */}
-        <section className="p-2 rounded-xl shadow bg-white border text-sm self-start w-fit">
-          <h2 className="text-base font-medium mb-2">Datos del recinto</h2>
+        <section className="p-2 rounded-xl shadow bg-white border text-sm self-start flex-1 h-full">
+          <h2 className="text-12 font-medium mb-2">Datos del recinto</h2>
           {vertices.map((v, i) => (
             <div key={i} className="flex items-center gap-2 mb-1 text-xs">
               <span className="w-5 text-gray-500">{idxToLetter(i)}</span>
@@ -1027,27 +1034,26 @@ export default function App() {
                 className="w-24 border rounded px-1"
               />
             </div>
-            <div className="text-xs text-gray-600">
-              Área: {area.toFixed(2)} · Volumen: {volumen.toFixed(2)}
-            </div>
+            <div className="text-11 text-black">Área: {area.toFixed(2)}</div>
+            <div className="text-11 text-black">Volumen: {volumen.toFixed(2)}</div>
           </div>
         </section>
 
         {/* Círculos de distancia */}
-        <section className="p-2 rounded-xl shadow bg-white border text-sm self-start w-fit">
-          <h2 className="text-base font-medium mb-2">Círculos de distancia</h2>
+        <section className="p-2 rounded-xl shadow bg-white border text-sm self-start flex-1 h-full">
+          <h2 className="text-12 font-medium mb-2">Círculos de distancia</h2>
           <table className="text-xs border w-full">
             <thead>
               <tr>
-                <th className="px-2">r</th>
-                <th className="px-2">Fuentes</th>
-                <th className="px-2">Puntos de medida</th>
+                <th className="px-2 text-center">r</th>
+                <th className="px-2 text-center">Fuentes</th>
+                <th className="px-2 text-center">Puntos de medida</th>
               </tr>
             </thead>
             <tbody>
               {radii.map((r) => (
                 <tr key={r}>
-                  <td className="px-2 py-1">{r.toFixed(1)} m</td>
+                  <td className="px-2 py-1 text-center">{r.toFixed(1)} m</td>
                   <td className="px-2 text-center">
                     <input
                       type="checkbox"
@@ -1076,12 +1082,88 @@ export default function App() {
           </table>
           {/* Opción de semilla eliminada */}
         </section>
+        </div>
+
+        {/* Columna derecha (fila superior): Tabla de distancias, mismo ancho que tabla puntos */}
+        <section className="p-3 rounded-xl shadow bg-white border text-sm self-start" style={{ width: rightColW }}>
+          <h2 className="text-12 font-medium mb-2">Tabla de distancias (3D)</h2>
+          <div>
+            <div className="text-11 text-gray-600 mb-2">
+              Distancia en línea recta entre todos los puntos activos. {minPair ? (
+                <span>
+                  Mínima actual: <b>{minPair.a}</b>–<b>{minPair.b}</b> = {minPair.d.toFixed(1)} m
+                </span>
+              ) : null}
+            </div>
+            <div className="overflow-x-hidden overflow-y-auto max-h-64">
+              <table className="text-11 border table-fixed" style={{ width: tableW }}>
+                <thead>
+                  <tr>
+                    <th className="px-1 py-1 h-7 whitespace-nowrap">•</th>
+                    {pointListTable.map((pt) => (
+                      <th
+                        key={pt.name}
+                        className={`px-1 py-1 text-right h-7 whitespace-nowrap ${!pt.p ? 'text-gray-400' : ''}`}
+                        style={{ color: pt.p ? pt.color : undefined }}
+                      >
+                        {pt.name}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {pointListTable.map((row, i) => (
+                    <tr key={row.name}>
+                      <td className="px-1 py-1 font-medium h-7 whitespace-nowrap" style={{ color: row.p ? row.color : undefined, opacity: row.p ? 1 : 0.6 }}>{row.name}</td>
+                      {pointListTable.map((col, j) => {
+                        const dStr = distMatrix[i][j];
+                        const hasData = !!(row.p && col.p);
+                        const dVal = parseFloat(dStr);
+                        const isDiag = i === j;
+                        const diagWithData = isDiag && hasData;
+                        const isMinPair =
+                          !!minPair &&
+                          ((row.name === minPair.a && col.name === minPair.b) ||
+                            (row.name === minPair.b && col.name === minPair.a));
+                        const pairKey = `${Math.min(i, j)}-${Math.max(i, j)}`;
+                        const isViol = !isDiag && hasData && distViol?.pairs?.has(pairKey);
+                        const underTwo = !isDiag && hasData && Number.isFinite(dVal) && dVal < 2;
+
+                        // Prioridad de estilos: diagonal con datos < mínimo (amarillo) < violación (rose) < <2m (rojo suave)
+                        const bgClass = diagWithData
+                          ? ""
+                          : isMinPair
+                          ? "bg-yellow-50"
+                          : isViol
+                          ? "bg-rose-50"
+                          : underTwo
+                          ? "bg-red-50"
+                          : "";
+                        const textClass = diagWithData
+                          ? "text-gray-400"
+                          : isViol
+                          ? "text-rose-700 font-semibold"
+                          : "";
+
+                        return (
+                          <td key={col.name} className={`px-1 py-1 text-right h-7 whitespace-nowrap ${textClass} ${bgClass}`}>
+                            {dStr}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
 
       </div>
 
       {/* Dibujo + tabla */}
-      <div className="flex gap-4 items-start">
-        <div className="p-3 rounded-xl shadow bg-white border">
+      <div className="grid gap-4 items-start" style={{ gridTemplateColumns: `${leftColW}px ${rightColW}px` }}>
+        <div className="p-3 rounded-xl shadow bg-white border" style={{ width: leftColW }}>
           <svg
             ref={svgRef}
             width={width}
@@ -1121,7 +1203,7 @@ export default function App() {
                     style={{ cursor: 'grab' }}
                     onPointerDown={(e) => beginDrag(e, { kind: 'V', index: i })}
                   />
-                  <text x={s.x + 6} y={s.y - 6} fontSize={11} fill="#111">{label}</text>
+                  <text x={s.x + 6} y={s.y - 6} fontSize={10} fill="#111">{label}</text>
                 </g>
               );
             })}
@@ -1138,7 +1220,7 @@ export default function App() {
                         <circle key={rr} cx={s.x} cy={s.y} r={parseFloat(rr) * scale} fill="none" stroke={color} opacity={0.35} />
                       ))}
                     <circle cx={s.x} cy={s.y} r={5} fill={color} />
-                    <text x={s.x + 6} y={s.y - 6} fontSize={11} fill={color}>{label}</text>
+                    <text x={s.x + 6} y={s.y - 6} fontSize={10} fill={color}>{label}</text>
                   </g>
                 );
               };
@@ -1153,92 +1235,17 @@ export default function App() {
         </div>
 
         <div className="flex flex-col gap-4">
-          {/* Tabla de distancias (3D) */}
-          <section className="p-3 rounded-xl shadow bg-white border text-sm w-fit">
-            <h2 className="text-base font-medium mb-2">Tabla de distancias (3D)</h2>
-            <div>
-              <div className="text-[11px] text-gray-600 mb-2">
-                Distancia en línea recta entre todos los puntos activos. {minPair ? (
-                  <span>
-                    Mínima actual: <b>{minPair.a}</b>–<b>{minPair.b}</b> = {minPair.d.toFixed(2)} m
-                  </span>
-                ) : null}
-              </div>
-              <div className="overflow-auto max-h-64">
-                <table className="text-xs border table-fixed w-[420px]">
-                  <thead>
-                    <tr>
-                      <th className="px-2 py-1 w-10 h-7">•</th>
-                      {pointListTable.map((pt) => (
-                        <th
-                          key={pt.name}
-                          className={`px-2 py-1 text-right w-14 h-7 whitespace-nowrap ${!pt.p ? 'text-gray-400' : ''}`}
-                          style={{ color: pt.p ? pt.color : undefined }}
-                        >
-                          {pt.name}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pointListTable.map((row, i) => (
-                      <tr key={row.name}>
-                        <td className="px-2 py-1 font-medium w-10 h-7 whitespace-nowrap" style={{ color: row.p ? row.color : undefined, opacity: row.p ? 1 : 0.6 }}>{row.name}</td>
-                        {pointListTable.map((col, j) => {
-                          const dStr = distMatrix[i][j];
-                          const hasData = !!(row.p && col.p);
-                          const dVal = parseFloat(dStr);
-                          const isDiag = i === j;
-                          const diagWithData = isDiag && hasData;
-                          const isMinPair =
-                            !!minPair &&
-                            ((row.name === minPair.a && col.name === minPair.b) ||
-                              (row.name === minPair.b && col.name === minPair.a));
-                          const pairKey = `${Math.min(i, j)}-${Math.max(i, j)}`;
-                          const isViol = !isDiag && hasData && distViol?.pairs?.has(pairKey);
-                          const underTwo = !isDiag && hasData && Number.isFinite(dVal) && dVal < 2;
+          <section className="p-3 rounded-xl shadow bg-white border text-sm" style={{ width: rightColW }}>
+          <h2 className="text-12 font-medium mb-2">Tabla de puntos</h2>
 
-                          // Prioridad de estilos: diagonal con datos < mínimo (amarillo) < violación (rose) < <2m (rojo suave)
-                          const bgClass = diagWithData
-                            ? ""
-                            : isMinPair
-                            ? "bg-yellow-50"
-                            : isViol
-                            ? "bg-rose-50"
-                            : underTwo
-                            ? "bg-red-50"
-                            : "";
-                          const textClass = diagWithData
-                            ? "text-gray-400"
-                            : isViol
-                            ? "text-rose-700 font-semibold"
-                            : "";
-
-                          return (
-                            <td key={col.name} className={`px-2 py-1 text-right h-7 ${textClass} ${bgClass}`}>
-                              {dStr}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </section>
-
-          <section className="p-3 rounded-xl shadow bg-white border text-sm w-fit">
-          <h2 className="text-base font-medium mb-2">Tabla de puntos</h2>
-
-          <table className="text-xs border table-fixed w-[420px]">
+          <table className="text-11 border table-fixed" style={{ width: tableW }}>
             <thead>
               <tr>
-                <th className="px-2 h-7 w-16">Activa</th>
-                <th className="px-2 h-7 w-20">Punto</th>
-                <th className="px-2 h-7 w-16">X</th>
-                <th className="px-2 h-7 w-16">Y</th>
-                <th className="px-2 h-7 w-16">Z</th>
+                <th className="px-2 h-7 w-16 text-center">Activa</th>
+                <th className="px-2 h-7 w-20 text-left">Punto</th>
+                <th className="px-2 h-7 w-16 text-center">X</th>
+                <th className="px-2 h-7 w-16 text-center">Y</th>
+                <th className="px-2 h-7 w-16 text-center">Z</th>
               </tr>
             </thead>
             <tbody>
@@ -1258,8 +1265,8 @@ export default function App() {
                       }}
                     />
                   </td>
-                  <td className="px-2 font-medium h-7">{row.name}</td>
-                  <td className="px-2 h-7">
+                  <td className="px-2 font-medium h-7 text-left">{row.name}</td>
+                  <td className="px-2 h-7 text-center">
                     <NumInput
                       value={row.val.x}
                       onCommit={(val) => {
@@ -1271,7 +1278,7 @@ export default function App() {
                       title={row.v.msg.join("\n")}
                     />
                   </td>
-                  <td className="px-2 h-7">
+                  <td className="px-2 h-7 text-center">
                     <NumInput
                       value={row.val.y}
                       onCommit={(val) => {
@@ -1283,7 +1290,7 @@ export default function App() {
                       title={row.v.msg.join("\n")}
                     />
                   </td>
-                  <td className="px-2 h-7">
+                  <td className="px-2 h-7 text-center">
                     <NumInput
                       value={row.val.z}
                       onCommit={(val) => {
@@ -1301,7 +1308,7 @@ export default function App() {
                 <tr key={i} className={!blueActive ? 'opacity-60' : ''}>
                   <td className="px-2 text-center h-7">—</td>
                   <td className="px-2 h-7">{`P${i + 1}`}</td>
-                  <td className="px-2 h-7">
+                  <td className="px-2 h-7 text-center">
                     <NumInput
                       value={b.x}
                       onCommit={(val) => {
@@ -1314,7 +1321,7 @@ export default function App() {
                       title={(viol.blue[i]?.msg || []).join("\n")}
                     />
                   </td>
-                  <td className="px-2 h-7">
+                  <td className="px-2 h-7 text-center">
                     <NumInput
                       value={b.y}
                       onCommit={(val) => {
@@ -1327,7 +1334,7 @@ export default function App() {
                       title={(viol.blue[i]?.msg || []).join("\n")}
                     />
                   </td>
-                  <td className="px-2 h-7">
+                  <td className="px-2 h-7 text-center">
                     <NumInput
                       value={b.z}
                       onCommit={(val) => {
@@ -1346,8 +1353,24 @@ export default function App() {
           </table>
 
           <div className="mt-3 flex gap-2 items-center flex-wrap">
-            <button className="px-3 py-2 rounded-lg bg-gray-200 hover:bg-gray-300" onClick={undo} disabled={past.length === 0}>Atrás</button>
-            <button className="px-3 py-2 rounded-lg bg-gray-200 hover:bg-gray-300" onClick={redo} disabled={future.length === 0}>Adelante</button>
+            <button
+              className="px-3 py-2 rounded-lg bg-gray-200 hover:bg-gray-300"
+              onClick={undo}
+              disabled={past.length === 0}
+              title="Deshacer (Atrás)"
+              aria-label="Deshacer"
+            >
+              ↺
+            </button>
+            <button
+              className="px-3 py-2 rounded-lg bg-gray-200 hover:bg-gray-300"
+              onClick={redo}
+              disabled={future.length === 0}
+              title="Rehacer (Adelante)"
+              aria-label="Rehacer"
+            >
+              ↻
+            </button>
 
             <button className={`px-4 py-2 rounded-lg text-white bg-blue-600 ${busy ? "opacity-60" : "hover:bg-blue-700"}`} onClick={generate} disabled={busy}>
               {busy ? "Generando…" : "Generar puntos"}
