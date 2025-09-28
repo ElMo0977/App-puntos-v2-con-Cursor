@@ -2,6 +2,7 @@
   "name": "app-puntos-v2-con-cursor",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
