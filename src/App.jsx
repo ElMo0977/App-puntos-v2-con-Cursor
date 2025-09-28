@@ -1398,6 +1398,16 @@ export default function App() {
               ...(blueActive ? blue.map((b, i) => ({ name: `P${i + 1}`, p: b })) : []),
             ];
 
+            // Márgenes y polígono (XY) y límites en Z para todos los puntos activos
+            pts.forEach(({ name, p }) => {
+              if (!pointInPolygon(p, vertices) || minDistToEdges2D(p, vertices) < MARGIN - EPS) {
+                list.push(`${name} fuera del polígono o a < 0.5 m del borde`);
+              }
+              if (p.z < MARGIN || p.z > alturaZ - MARGIN) {
+                list.push(`${name} con Z fuera de márgenes`);
+              }
+            });
+
             ["x", "y", "z"].forEach((axis) => {
               const map = new Map();
               const pool = axis === "z" ? pts.filter(({ name }) => name.startsWith("P")) : pts;
