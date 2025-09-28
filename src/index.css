@@ -6,7 +6,7 @@
 @layer base {
   :root {
     --app-font-family: 'Verdana', Geneva, Tahoma, sans-serif;
-    --app-font-size: 12px; /* tamaño por defecto (resto) */
+    --app-font-size: 13px; /* tamaño base para mejor legibilidad */
     --app-font-weight: 400;
   }
 

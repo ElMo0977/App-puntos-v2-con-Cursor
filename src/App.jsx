@@ -962,7 +962,7 @@ export default function App() {
 
   return (
     <div className="p-6 space-y-4">
-      <h1 className="text-14 font-semibold text-white">Distribución de Puntos Acústicos - UNE EN ISO 16283-1-2015 - Medidas de aislamiento a ruido aéreo</h1>
+      <h1 className="text-14 font-semibold text-gray-900">Distribución de Puntos Acústicos - UNE EN ISO 16283-1-2015 - Medidas de aislamiento a ruido aéreo</h1>
 
       <div className="grid gap-4 items-stretch" style={{ gridTemplateColumns: `${leftColW}px ${rightColW}px` }}>
         {/* Columna izquierda (fila superior): Datos + Círculos, igual ancho que el gráfico */}
