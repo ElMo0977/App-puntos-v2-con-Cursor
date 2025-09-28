@@ -1129,15 +1129,16 @@ export default function App() {
                         const isViol = !isDiag && hasData && distViol?.pairs?.has(pairKey);
                         const underTwo = !isDiag && hasData && Number.isFinite(dVal) && dVal < 2;
 
-                        // Prioridad de estilos: diagonal con datos < mínimo (amarillo) < violación (rose) < <2m (rojo suave)
+                        // Prioridad de estilos: <2m (rojo suave) tiene prioridad sobre el resto
+                        // luego mínimo actual (amarillo) y violación (rose). Diagonal sin fondo.
                         const bgClass = diagWithData
                           ? ""
+                          : underTwo
+                          ? "bg-red-50"
                           : isMinPair
                           ? "bg-yellow-50"
                           : isViol
                           ? "bg-rose-50"
-                          : underTwo
-                          ? "bg-red-50"
                           : "";
                         const textClass = diagWithData
                           ? "text-gray-400"
