@@ -11,6 +11,15 @@ import {
   shuffle,
 } from "./utils/geometry";
 
+/**
+ * Estructura general:
+ * - Estado de geometría: vertices (polígono XY) y alturaZ.
+ * - Estado de puntos: F1/F2 + flags de activación y los puntos azules (blue/blueActive).
+ * - Estado de UI y reglas: anillos de distancia, mensajes, busy flag y nonce para variar la generación.
+ * - Historial: past/future guardan snapshots para undo/redo.
+ * - Cálculos derivados (memoizados): bounds, escala, celdas candidatas, distancias y violaciones.
+ * - Flujo: generateBluePoints elige combinaciones válidas; validate revisa reglas y muestra avisos.
+ */
 // ===== Utilidades cortas =====
 const EPS = 1e-9;
 const STEP = 0.1; // rejilla 0,1 m
@@ -40,10 +49,10 @@ const MIN_F_F_AXIS = 0.7; // F–F ≥ 0,7 m en cada eje
 
 // ===== Funciones auxiliares de validación (reutilizables) =====
 /**
- * Detecta duplicidades de coordenadas por eje
- * @param {Array} points - Array de {name, p: {x,y,z}}
- * @param {Object} options - {includeFx: boolean, axis: string}
- * @returns {Array} Array de mensajes de duplicidad
+ * Detecta duplicidades de coordenadas por eje.
+ * @param {{name:string, p:{x:number,y:number,z:number}}[]} points Lista de puntos con nombre.
+ * @param {{includeFx?:boolean, axis?:string}} options includeFx=false excluye Fx en Z; axis limita a un eje.
+ * @returns {string[]} Mensajes descriptivos de duplicidades detectadas.
  */
 function checkCoordinateDuplicates(points, { includeFx = true, axis = null } = {}) {
   const axes = axis ? [axis] : ["x", "y", "z"];
@@ -72,11 +81,11 @@ function checkCoordinateDuplicates(points, { includeFx = true, axis = null } = {
 }
 
 /**
- * Valida polígono y márgenes para un punto
- * @param {Object} p - Punto {x, y, z}
- * @param {Array} vertices - Vértices del polígono
- * @param {number} alturaZ - Altura del recinto
- * @returns {Array} Array de mensajes de error
+ * Valida que un punto cumpla polígono y márgenes (XY + Z).
+ * @param {{x:number,y:number,z:number}} p Punto a validar.
+ * @param {{x:number,y:number}[]} vertices Polígono de la planta.
+ * @param {number} alturaZ Altura del recinto.
+ * @returns {string[]} Mensajes de error si se incumplen márgenes o pertenencia al polígono.
  */
 function checkPolygonAndMargins(p, vertices, alturaZ) {
   const messages = [];
@@ -95,10 +104,10 @@ function checkPolygonAndMargins(p, vertices, alturaZ) {
 }
 
 /**
- * Valida distancias F1-F2 por ejes
- * @param {Object} F1 - Punto F1
- * @param {Object} F2 - Punto F2
- * @returns {Object} {violations: {x, y, z}, messages: []}
+ * Valida distancias mínimas entre F1 y F2 en cada eje y planos.
+ * @param {{x:number,y:number,z:number}} F1 Coordenadas de la fuente 1.
+ * @param {{x:number,y:number,z:number}} F2 Coordenadas de la fuente 2.
+ * @returns {{violations:{x:boolean,y:boolean,z:boolean}, messages:string[]}} Flags por eje y mensajes.
  */
 function checkF1F2Distances(F1, F2) {
   const pd = planarDistances(F1, F2);
@@ -138,10 +147,10 @@ function checkF1F2Distances(F1, F2) {
 }
 
 /**
- * Valida todas las distancias entre puntos
- * @param {Array} points - Array de {name, p: {x,y,z}}
- * @param {Object} options - {activeF1, activeF2, F1, F2}
- * @returns {Object} {pairs: Set, msgs: Array}
+ * Valida distancias entre todos los puntos activos y clasifica violaciones.
+ * @param {{name:string,p:{x:number,y:number,z:number}}[]} points Lista de puntos con nombre.
+ * @param {{activeF1?:boolean, activeF2?:boolean, F1?:{x:number,y:number,z:number}, F2?:{x:number,y:number,z:number}}} options Estado de activación y coordenadas Fx.
+ * @returns {{pairs:Set<string>, msgs:string[]}} Pares en violación y mensajes de detalle.
  */
 function checkAllDistances(points, { activeF1 = false, activeF2 = false, F1 = null, F2 = null } = {}) {
   const pairs = new Set();

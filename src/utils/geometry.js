@@ -1,5 +1,11 @@
 const EPS = 1e-9;
 
+/**
+ * Calcula la distancia euclidiana entre dos puntos tridimensionales.
+ * @param {{x:number, y:number, z:number}} a Primer punto.
+ * @param {{x:number, y:number, z:number}} b Segundo punto.
+ * @returns {number} Distancia 3D entre a y b.
+ */
 export function dist3D(a, b) {
   const dx = a.x - b.x,
     dy = a.y - b.y,
@@ -7,6 +13,12 @@ export function dist3D(a, b) {
   return Math.sqrt(dx * dx + dy * dy + dz * dz);
 }
 
+/**
+ * Devuelve distancias planas entre dos puntos en los tres planos principales.
+ * @param {{x:number, y:number, z:number}} a Primer punto.
+ * @param {{x:number, y:number, z:number}} b Segundo punto.
+ * @returns {{xy:number, xz:number, yz:number}} Distancias en XY, XZ y YZ.
+ */
 export function planarDistances(a, b) {
   const dx = a.x - b.x,
     dy = a.y - b.y,
@@ -14,6 +26,12 @@ export function planarDistances(a, b) {
   return { xy: Math.hypot(dx, dy), xz: Math.hypot(dx, dz), yz: Math.hypot(dy, dz) };
 }
 
+/**
+ * Determina si un punto está dentro de un polígono en 2D usando ray casting.
+ * @param {{x:number, y:number}} pt Punto a evaluar.
+ * @param {{x:number, y:number}[]} poly Polígono en el plano XY.
+ * @returns {boolean} true si el punto está dentro (o sobre el borde).
+ */
 export function pointInPolygon(pt, poly) {
   let inside = false;
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
@@ -28,6 +46,11 @@ export function pointInPolygon(pt, poly) {
   return inside;
 }
 
+/**
+ * Calcula el área de un polígono simple en el plano XY.
+ * @param {{x:number, y:number}[]} poly Vértices del polígono en orden.
+ * @returns {number} Área positiva en unidades cuadradas.
+ */
 export function polygonArea(poly) {
   let A = 0;
   for (let i = 0; i < poly.length; i++) {
@@ -37,6 +60,13 @@ export function polygonArea(poly) {
   return Math.abs(A) / 2;
 }
 
+/**
+ * Distancia mínima entre un punto y un segmento en 2D.
+ * @param {{x:number, y:number}} p Punto a medir.
+ * @param {{x:number, y:number}} a Extremo A del segmento.
+ * @param {{x:number, y:number}} b Extremo B del segmento.
+ * @returns {number} Distancia al segmento.
+ */
 export function distPointToSegment2D(p, a, b) {
   const vx = b.x - a.x,
     vy = b.y - a.y,
@@ -52,6 +82,12 @@ export function distPointToSegment2D(p, a, b) {
   return Math.hypot(p.x - proj.x, p.y - proj.y);
 }
 
+/**
+ * Distancia mínima de un punto a cualquiera de los lados de un polígono.
+ * @param {{x:number, y:number}} p Punto a medir.
+ * @param {{x:number, y:number}[]} poly Polígono en el plano XY.
+ * @returns {number} Distancia al borde más cercano.
+ */
 export function minDistToEdges2D(p, poly) {
   let md = Infinity;
   for (let i = 0; i < poly.length; i++) md = Math.min(md, distPointToSegment2D(p, poly[i], poly[(i + 1) % poly.length]));
@@ -59,6 +95,11 @@ export function minDistToEdges2D(p, poly) {
 }
 
 // RNG simple reproducible
+/**
+ * Generador pseudoaleatorio determinista (Mulberry32) a partir de una semilla.
+ * @param {number} seed Semilla entera (se fuerza a uint32).
+ * @returns {() => number} Función que devuelve valores en [0, 1).
+ */
 export function mulberry32(seed) {
   let t = seed >>> 0;
   return function () {
@@ -69,6 +110,12 @@ export function mulberry32(seed) {
   };
 }
 
+/**
+ * Devuelve una copia barajada de un array usando el generador indicado.
+ * @param {Array} arr Array a barajar.
+ * @param {() => number} rng Función aleatoria que devuelve valores en [0,1).
+ * @returns {Array} Copia de arr mezclada.
+ */
 export function shuffle(arr, rng) {
   const a = arr.slice();
   for (let i = a.length - 1; i > 0; i--) {
