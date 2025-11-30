@@ -16,25 +16,13 @@
     font-weight: var(--app-font-weight);
     line-height: 1.35;
   }
-  /* Forzar tamaño 12 en todo, luego sobrescribir con utilidades text-XX */
-  *, *::before, *::after {
-    font-size: var(--app-font-size) !important;
-    font-family: var(--app-font-family) !important;
-    font-weight: var(--app-font-weight) !important;
-    line-height: 1.35 !important;
-  }
-  svg text {
-    font-family: var(--app-font-family) !important;
-    font-size: var(--app-font-size) !important;
-    font-weight: var(--app-font-weight) !important;
-  }
 }
 
 /* Utilidades de tamaño específicas */
-.text-11 { font-size: 11px !important; }
-.text-12 { font-size: 12px !important; }
-.text-13 { font-size: 13px !important; }
-.text-14 { font-size: 14px !important; }
+.text-11 { font-size: 11px; }
+.text-12 { font-size: 12px; }
+.text-13 { font-size: 13px; }
+.text-14 { font-size: 14px; }
 
 body { background: #f9fafb; }
 

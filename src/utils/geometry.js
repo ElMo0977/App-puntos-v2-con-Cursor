@@ -23,7 +23,11 @@ export function planarDistances(a, b) {
   const dx = a.x - b.x,
     dy = a.y - b.y,
     dz = a.z - b.z;
-  return { xy: Math.hypot(dx, dy), xz: Math.hypot(dx, dz), yz: Math.hypot(dy, dz) };
+  return {
+    xy: Math.hypot(dx, dy),
+    xz: Math.hypot(dx, dz),
+    yz: Math.hypot(dy, dz),
+  };
 }
 
 /**
@@ -40,7 +44,8 @@ export function pointInPolygon(pt, poly) {
     const xj = poly[j].x,
       yj = poly[j].y;
     const hit =
-      (yi > pt.y) !== (yj > pt.y) && pt.x < ((xj - xi) * (pt.y - yi)) / ((yj - yi) + EPS) + xi;
+      yi > pt.y !== yj > pt.y &&
+      pt.x < ((xj - xi) * (pt.y - yi)) / (yj - yi + EPS) + xi;
     if (hit) inside = !inside;
   }
   return inside;
@@ -90,7 +95,11 @@ export function distPointToSegment2D(p, a, b) {
  */
 export function minDistToEdges2D(p, poly) {
   let md = Infinity;
-  for (let i = 0; i < poly.length; i++) md = Math.min(md, distPointToSegment2D(p, poly[i], poly[(i + 1) % poly.length]));
+  for (let i = 0; i < poly.length; i++)
+    md = Math.min(
+      md,
+      distPointToSegment2D(p, poly[i], poly[(i + 1) % poly.length])
+    );
   return md;
 }
 
