@@ -13,9 +13,19 @@ import {
   polygonArea,
   distPointToSegment2D,
   minDistToEdges2D,
-  mulberry32,
-  shuffle,
 } from './utils/geometry';
+import {
+  EPS,
+  STEP,
+  MARGIN,
+  MIN_RED_BLUE,
+  MIN_BLUE_BLUE,
+  MIN_F_F_AXIS,
+  round01,
+  key01,
+  parseNum,
+} from './utils/constants';
+import useBluePoints from './hooks/useBluePoints';
 
 /**
  * Estructura general:
@@ -26,16 +36,6 @@ import {
  * - Cálculos derivados (memoizados): bounds, escala, celdas candidatas, distancias y violaciones.
  * - Flujo: generateBluePoints elige combinaciones válidas; validate revisa reglas y muestra avisos.
  */
-// ===== Utilidades cortas =====
-const EPS = 1e-9;
-const STEP = 0.1; // rejilla 0,1 m
-const round01 = (n) => Math.round(n * 10) / 10;
-const key01 = (n) => n.toFixed(1);
-const parseNum = (v, fb = 0) => {
-  const n = parseFloat(String(v).replace(',', '.'));
-  return Number.isFinite(n) ? n : fb;
-};
-
 // Convierte índice 0->A, 1->B, ... 25->Z, 26->AA, etc.
 const idxToLetter = (i) => {
   let n = i;
@@ -46,12 +46,6 @@ const idxToLetter = (i) => {
   } while (n >= 0);
   return s;
 };
-
-// ===== Reglas =====
-const MARGIN = 0.5; // a caras (incluye Z)
-const MIN_RED_BLUE = 1.0; // F–P ≥ 1,0 m (3D)
-const MIN_BLUE_BLUE = 0.7; // P–P ≥ 0,7 m (3D)
-const MIN_F_F_AXIS = 0.7; // F–F ≥ 0,7 m en cada eje
 
 // ===== Funciones auxiliares de validación (reutilizables) =====
 /**
@@ -215,254 +209,6 @@ function checkAllDistances(
 }
 
 // ===== Generador de puntos azules =====
-function generateBluePoints({
-  F1,
-  F2,
-  candidates,
-  seed = null,
-  genNonce,
-  f1Active = true,
-  f2Active = true,
-  byZ,
-  zLevelsAll,
-}) {
-  if (!candidates.length) return { points: [], feasible: false };
-
-  // RNG: si hay semilla, determinista; si no, varía con genNonce para dar combinaciones distintas por clic
-  const userSeed = seed
-    ? Array.from(seed).reduce((a, c) => a + c.charCodeAt(0), 0)
-    : 0;
-  const rng = mulberry32(
-    seed ? userSeed : (Date.now() ^ (genNonce * 0x9e3779b9)) >>> 0
-  );
-
-  // Preferencia de Z: P1=1.0 y +0.1 por punto, pero podremos ajustar
-  const desiredZ = [1.0, 1.1, 1.2, 1.3, 1.4].map(round01);
-
-  // Z de rojas NO bloquea a azules; Z única solo entre Pxs
-  const usedZFromRed = new Set();
-
-  // zOptions por índice: ordenados por cercanía al deseado + jitter y rotación aleatoria para diversificar
-  const zOptionsByIdx = desiredZ.map((dz) => {
-    const arr = zLevelsAll
-      .map((z) => ({ z, k: Math.abs(z - dz) + rng() * 0.001 }))
-      .sort((a, b) => a.k - b.k)
-      .map((e) => e.z);
-    if (!seed && arr.length) {
-      const rot = Math.floor(rng() * arr.length);
-      return [...arr.slice(rot), ...arr.slice(0, rot)];
-    }
-    return arr;
-  });
-
-  // Anchuras y utilidades
-  const redAnchors = () => [
-    ...(f1Active ? [F1] : []),
-    ...(f2Active ? [F2] : []),
-  ];
-  const minDistToSet = (p, set) =>
-    set.reduce((m, q) => Math.min(m, dist3D(p, q)), Infinity);
-  const scoreMaximin = (cand, chosen) => {
-    const anchors = [...redAnchors(), ...chosen];
-    const dA = minDistToSet(cand, anchors);
-    const dB = chosen.length
-      ? Math.min(...chosen.map((q) => dist3D(cand, q)))
-      : dA;
-    const dR = redAnchors().length
-      ? Math.min(...redAnchors().map((r) => dist3D(cand, r)))
-      : Infinity;
-    return (
-      Math.min(dB, dR) * 10 +
-      dB * 2 +
-      (Number.isFinite(dR) ? dR : 0) +
-      rng() * 0.05
-    );
-  };
-
-  // Conjuntos usados por unicidad (incluye fuentes activas para X/Y; Z solo entre Pxs)
-  const usedX0 = new Set();
-  const usedY0 = new Set();
-  const usedZ0 = new Set(); // Z no bloqueada por F1/F2
-  if (f1Active) {
-    usedX0.add(key01(F1.x));
-    usedY0.add(key01(F1.y));
-  }
-  if (f2Active) {
-    usedX0.add(key01(F2.x));
-    usedY0.add(key01(F2.y));
-  }
-
-  // Backtracking: recoge múltiples soluciones válidas para poder rotarlas entre clics
-  const MAX_NODES = 60000;
-  let nodes = 0;
-  const TOPC = 22;
-  const TOPZ = 18; // ampliar búsqueda para no perder soluciones
-  const MAX_SOL = 20; // cuántas soluciones guardamos
-  const solutions = [];
-
-  function dfs(i, chosen, usedX, usedY, usedZ) {
-    if (nodes++ > MAX_NODES) return false;
-    if (i === 5) {
-      solutions.push(chosen.slice());
-      return solutions.length >= MAX_SOL;
-    }
-
-    const zList = zOptionsByIdx[i].slice(
-      0,
-      Math.min(TOPZ, zOptionsByIdx[i].length)
-    );
-    for (const z of zList) {
-      const zk = key01(z);
-      if (usedZ.has(zk)) continue; // Z único solo entre Pxs
-      let pool = (byZ.get(zk) || []).filter(
-        (c) => !usedX.has(key01(c.x)) && !usedY.has(key01(c.y))
-      );
-      if (!pool.length) continue;
-
-      // Filtrar por distancias; si vacío, no es válido este nivel Z
-      const poolOk = pool.filter(
-        (c) =>
-          redAnchors().every((r) => dist3D(c, r) >= MIN_RED_BLUE) &&
-          chosen.every((q) => dist3D(c, q) >= MIN_BLUE_BLUE)
-      );
-      if (!poolOk.length) continue;
-
-      // Ranking maximin + jitter
-      const ranked = poolOk
-        .map((c) => ({ c, s: scoreMaximin(c, chosen) + rng() * 0.02 }))
-        .sort((a, b) => b.s - a.s)
-        .slice(0, Math.min(TOPC, poolOk.length));
-
-      for (const { c } of ranked) {
-        const nx = new Set(usedX);
-        nx.add(key01(c.x));
-        const ny = new Set(usedY);
-        ny.add(key01(c.y));
-        const nz = new Set(usedZ);
-        nz.add(zk);
-        if (dfs(i + 1, [...chosen, c], nx, ny, nz)) return true; // early stop si ya tenemos MAX_SOL
-      }
-    }
-    return false;
-  }
-
-  dfs(0, [], usedX0, usedY0, usedZ0);
-
-  // Pequeño refinamiento local para homogeneidad (maximin) sobre la solución elegida
-  function refine(pts) {
-    let best = pts.slice();
-    for (let it = 0; it < 2; it++) {
-      for (let i = 0; i < best.length; i++) {
-        const zi = key01(best[i].z);
-        const anchors = redAnchors();
-        const pool = (byZ.get(zi) || []).filter((c) => {
-          const cx = key01(c.x);
-          const cy = key01(c.y);
-          // Debe suponer un cambio real del punto i
-          if (cx === key01(best[i].x) && cy === key01(best[i].y)) return false;
-          // Unicidad X/Y respecto al resto de P
-          if (
-            best.some(
-              (q, k) => k !== i && (key01(q.x) === cx || key01(q.y) === cy)
-            )
-          )
-            return false;
-          // Unicidad X/Y respecto a F activas
-          if (anchors.some((r) => key01(r.x) === cx || key01(r.y) === cy))
-            return false;
-          // Distancias mínimas con F activas
-          if (!anchors.every((r) => dist3D(c, r) >= MIN_RED_BLUE)) return false;
-          // Distancias mínimas con el resto de P
-          if (
-            !best.every((q, k) =>
-              k === i ? true : dist3D(c, q) >= MIN_BLUE_BLUE
-            )
-          )
-            return false;
-          return true;
-        });
-        let cand = best[i];
-        let score = scoreMaximin(
-          cand,
-          best.filter((_, k) => k !== i)
-        );
-        for (const p of pool) {
-          const sc = scoreMaximin(
-            p,
-            best.filter((_, k) => k !== i)
-          );
-          if (sc > score) {
-            score = sc;
-            cand = p;
-          }
-        }
-        best[i] = cand;
-      }
-    }
-    return best;
-  }
-
-  if (solutions.length) {
-    // Elegir distinta combinación en cada clic cuando no hay semilla
-    const idx = seed ? 0 : genNonce % solutions.length;
-    let pick = solutions[idx].slice();
-    pick = refine(pick);
-    return { points: pick, feasible: true };
-  }
-
-  // Fallback: no factible => devuelve 5 puntos maximizando separación (puede violar reglas).
-  const anchors0 = redAnchors();
-  const chosen = [];
-  const usedX = new Set(usedX0),
-    usedY = new Set(usedY0),
-    usedZ = new Set(usedZ0);
-  const all = shuffle(candidates, rng);
-
-  for (let k = 0; k < 5; k++) {
-    const levels = [
-      (c) =>
-        !usedX.has(key01(c.x)) &&
-        !usedY.has(key01(c.y)) &&
-        !usedZ.has(key01(c.z)) &&
-        anchors0.every((r) => dist3D(c, r) >= MIN_RED_BLUE) &&
-        chosen.every((q) => dist3D(c, q) >= MIN_BLUE_BLUE),
-      (c) =>
-        !usedX.has(key01(c.x)) &&
-        !usedY.has(key01(c.y)) &&
-        !usedZ.has(key01(c.z)) &&
-        anchors0.every((r) => dist3D(c, r) >= MIN_RED_BLUE),
-      (c) =>
-        !usedX.has(key01(c.x)) &&
-        !usedY.has(key01(c.y)) &&
-        !usedZ.has(key01(c.z)),
-      (_) => true,
-    ];
-    let picked = null;
-    for (const ok of levels) {
-      const cand = all
-        .filter(ok)
-        .map((c) => ({ c, s: scoreMaximin(c, chosen) }))
-        .sort((a, b) => b.s - a.s)
-        .slice(0, 20);
-      if (cand.length) {
-        picked = cand[Math.floor(rng() * cand.length)].c;
-        break;
-      }
-    }
-    if (picked) {
-      chosen.push(picked);
-      usedX.add(key01(picked.x));
-      usedY.add(key01(picked.y));
-      usedZ.add(key01(picked.z));
-    }
-  }
-  while (chosen.length < 5 && candidates.length) {
-    const extra = candidates[Math.floor(rng() * candidates.length)];
-    chosen.push(extra);
-  }
-  return { points: chosen.slice(0, 5), feasible: false };
-}
-
 export default function App() {
   // Polígono y altura
   const [vertices, setVertices] = useState([
@@ -896,6 +642,19 @@ export default function App() {
   };
 
   // Generación
+  const { points: generatedPoints, feasible: generatedFeasible } =
+    useBluePoints({
+      F1,
+      F2,
+      candidates,
+      f1Active: activeF1,
+      f2Active: activeF2,
+      byZ,
+      zLevelsAll,
+      seed: null,
+      genNonce: nonce,
+    });
+
   const generate = useCallback(() => {
     if (busy) return;
     setBusy(true);
@@ -922,32 +681,26 @@ export default function App() {
 
     setTimeout(() => {
       try {
-        const res = generateBluePoints({
-          F1,
-          F2,
-          candidates,
-          genNonce: nonce,
-          f1Active: activeF1,
-          f2Active: activeF2,
-          byZ,
-          zLevelsAll,
-        });
-        setBlue(res.points);
+        setBlue(generatedPoints);
         setBlueActive(true);
 
-        const issues = buildViolationSummary(res.points);
-        if (res.feasible && issues.length === 0) {
+        const issues = buildViolationSummary(generatedPoints);
+        if (generatedFeasible && issues.length === 0) {
           setErr(false);
-          setMsg(`✓ Generados ${res.points.length} puntos válidos.`);
-        } else if (res.feasible) {
+          setMsg(`✓ Generados ${generatedPoints.length} puntos válidos.`);
+        } else if (generatedFeasible) {
           setErr(false);
           setMsg(
-            `✓ Generados ${res.points.length} puntos. Revisa posibles avisos:\n• ${issues.slice(0, 6).join('\n• ')}`
+            `✓ Generados ${generatedPoints.length} puntos. Revisa posibles avisos:\n• ${issues
+              .slice(0, 6)
+              .join('\n• ')}`
           );
         } else {
           setErr(true);
           setMsg(
-            `⚠️ No es posible cumplir todas las reglas con esta geometría. Se muestran 5 puntos maximizando separación.\n• ${issues.slice(0, 8).join('\n• ')}`
+            `⚠️ No es posible cumplir todas las reglas con esta geometría. Se muestran 5 puntos maximizando separación.\n• ${issues
+              .slice(0, 8)
+              .join('\n• ')}`
           );
         }
         setNonce((n) => n + 1);
@@ -959,7 +712,24 @@ export default function App() {
         setBusy(false);
       }
     }, 20);
-  }, [busy, candidates, nonce, F1, F2, activeF1, activeF2, byZ, zLevelsAll]);
+  }, [
+    F1,
+    F2,
+    activeF1,
+    activeF2,
+    alturaZ,
+    blue,
+    blueActive,
+    bounds,
+    busy,
+    byZ,
+    candidates,
+    generatedFeasible,
+    generatedPoints,
+    ringsBlue,
+    ringsRed,
+    vertices,
+  ]);
 
   // Dibujo: rejilla + ejes + polígono + puntos
   const GridAxes = useMemo(() => {
