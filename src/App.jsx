@@ -182,6 +182,157 @@ function shuffle(arr, rng) {
 const MARGIN = 0.5; // a caras (incluye Z)
 const MIN_RED_BLUE = 1.0; // F–P ≥ 1,0 m (3D)
 const MIN_BLUE_BLUE = 0.7; // P–P ≥ 0,7 m (3D)
+const MIN_F_F_AXIS = 0.7; // F–F ≥ 0,7 m en cada eje
+
+// ===== Funciones auxiliares de validación (reutilizables) =====
+/**
+ * Detecta duplicidades de coordenadas por eje
+ * @param {Array} points - Array de {name, p: {x,y,z}}
+ * @param {Object} options - {includeFx: boolean, axis: string}
+ * @returns {Array} Array de mensajes de duplicidad
+ */
+function checkCoordinateDuplicates(points, { includeFx = true, axis = null } = {}) {
+  const axes = axis ? [axis] : ["x", "y", "z"];
+  const messages = [];
+  
+  axes.forEach((ax) => {
+    const map = new Map();
+    const pool = ax === "z" && !includeFx 
+      ? points.filter(({ name }) => name.startsWith("P"))
+      : points;
+    
+    pool.forEach(({ name, p }) => {
+      const k = key01(p[ax]);
+      if (!map.has(k)) map.set(k, []);
+      map.get(k).push(name);
+    });
+    
+    for (const [k, names] of map) {
+      if (names.length > 1) {
+        messages.push(`${ax.toUpperCase()} repetida (= ${k}) entre ${names.join(", ")}`);
+      }
+    }
+  });
+  
+  return messages;
+}
+
+/**
+ * Valida polígono y márgenes para un punto
+ * @param {Object} p - Punto {x, y, z}
+ * @param {Array} vertices - Vértices del polígono
+ * @param {number} alturaZ - Altura del recinto
+ * @returns {Array} Array de mensajes de error
+ */
+function checkPolygonAndMargins(p, vertices, alturaZ) {
+  const messages = [];
+  
+  if (!pointInPolygon(p, vertices)) {
+    messages.push("Fuera del polígono (XY)");
+  }
+  if (minDistToEdges2D(p, vertices) < MARGIN - EPS) {
+    messages.push("A <0,5 del borde (XY)");
+  }
+  if (p.z < MARGIN || p.z > alturaZ - MARGIN) {
+    messages.push("Z fuera de márgenes");
+  }
+  
+  return messages;
+}
+
+/**
+ * Valida distancias F1-F2 por ejes
+ * @param {Object} F1 - Punto F1
+ * @param {Object} F2 - Punto F2
+ * @returns {Object} {violations: {x, y, z}, messages: []}
+ */
+function checkF1F2Distances(F1, F2) {
+  const pd = planarDistances(F1, F2);
+  const dx = Math.abs(F1.x - F2.x);
+  const dy = Math.abs(F1.y - F2.y);
+  const dz = Math.abs(F1.z - F2.z);
+  
+  const violations = { x: false, y: false, z: false };
+  const messages = [];
+  
+  if (pd.xy < MIN_F_F_AXIS) {
+    violations.x = violations.y = true;
+    messages.push(`F1–F2 < 0,7 en XY (${pd.xy.toFixed(2)} m)`);
+  }
+  if (pd.xz < MIN_F_F_AXIS) {
+    violations.x = violations.z = true;
+    messages.push(`F1–F2 < 0,7 en XZ (${pd.xz.toFixed(2)} m)`);
+  }
+  if (pd.yz < MIN_F_F_AXIS) {
+    violations.y = violations.z = true;
+    messages.push(`F1–F2 < 0,7 en YZ (${pd.yz.toFixed(2)} m)`);
+  }
+  if (dx < MIN_F_F_AXIS) {
+    violations.x = true;
+    messages.push(`F1–F2: |X| = ${dx.toFixed(2)} < 0,7 m`);
+  }
+  if (dy < MIN_F_F_AXIS) {
+    violations.y = true;
+    messages.push(`F1–F2: |Y| = ${dy.toFixed(2)} < 0,7 m`);
+  }
+  if (dz < MIN_F_F_AXIS) {
+    violations.z = true;
+    messages.push(`F1–F2: |Z| = ${dz.toFixed(2)} < 0,7 m`);
+  }
+  
+  return { violations, messages };
+}
+
+/**
+ * Valida todas las distancias entre puntos
+ * @param {Array} points - Array de {name, p: {x,y,z}}
+ * @param {Object} options - {activeF1, activeF2, F1, F2}
+ * @returns {Object} {pairs: Set, msgs: Array}
+ */
+function checkAllDistances(points, { activeF1 = false, activeF2 = false, F1 = null, F2 = null } = {}) {
+  const pairs = new Set();
+  const msgs = [];
+  const N = points.length;
+  
+  for (let i = 0; i < N; i++) {
+    for (let j = i + 1; j < N; j++) {
+      const A = points[i], B = points[j];
+      const nameA = A.name, nameB = B.name;
+      const isFA = nameA.startsWith("F");
+      const isFB = nameB.startsWith("F");
+      const isPA = nameA.startsWith("P");
+      const isPB = nameB.startsWith("P");
+      
+      if (isFA && isFB) {
+        const dx = Math.abs(A.p.x - B.p.x);
+        const dy = Math.abs(A.p.y - B.p.y);
+        const dz = Math.abs(A.p.z - B.p.z);
+        const parts = [];
+        if (dx < MIN_F_F_AXIS) parts.push(`|X|=${dx.toFixed(2)}`);
+        if (dy < MIN_F_F_AXIS) parts.push(`|Y|=${dy.toFixed(2)}`);
+        if (dz < MIN_F_F_AXIS) parts.push(`|Z|=${dz.toFixed(2)}`);
+        if (parts.length) {
+          pairs.add(`${i}-${j}`);
+          msgs.push(`${nameA}–${nameB}: ${parts.join(", ")} < 0,7 m`);
+        }
+      } else if ((isFA && isPB) || (isFB && isPA)) {
+        const d = dist3D(A.p, B.p);
+        if (d < MIN_RED_BLUE) {
+          pairs.add(`${i}-${j}`);
+          msgs.push(`${nameA}–${nameB} = ${d.toFixed(2)} < 1,0 m (3D)`);
+        }
+      } else if (isPA && isPB) {
+        const d = dist3D(A.p, B.p);
+        if (d < MIN_BLUE_BLUE) {
+          pairs.add(`${i}-${j}`);
+          msgs.push(`${nameA}–${nameB} = ${d.toFixed(2)} < 0,7 m (3D)`);
+        }
+      }
+    }
+  }
+  
+  return { pairs, msgs };
+}
 
 // ===== Generador de puntos azules =====
 function generateBluePoints({
@@ -559,7 +710,16 @@ export default function App() {
 
   const validate = useCallback(() => {
     const v = { F1: { x: false, y: false, z: false, msg: [] }, F2: { x: false, y: false, z: false, msg: [] }, blue: blue.map(() => ({ x: false, y: false, z: false, msg: [] })) };
-    const markDup = (axis) => {
+    
+    // Construir lista de puntos para validación
+    const allPoints = [
+      ...(activeF1 ? [{ name: "F1", p: F1 }] : []),
+      ...(activeF2 ? [{ name: "F2", p: F2 }] : []),
+      ...blue.map((b, i) => ({ name: `P${i + 1}`, p: b })),
+    ];
+    
+    // Validar duplicidades de coordenadas
+    ["x", "y", "z"].forEach((axis) => {
       const map = new Map();
       const add = (who, i, val) => {
         const k = key01(val);
@@ -572,8 +732,9 @@ export default function App() {
         if (activeF2) add("F2", -1, F2[axis]);
       }
       blue.forEach((b, i) => add("B", i, b[axis]));
-      for (const [, list] of map)
-        if (list.length > 1)
+      
+      for (const [, list] of map) {
+        if (list.length > 1) {
           list.forEach((e) => {
             if (e.who === "F1") {
               v.F1[axis] = true;
@@ -586,9 +747,11 @@ export default function App() {
               v.blue[e.i].msg.push(`${axis.toUpperCase()} repetida`);
             }
           });
-    };
-    ["x", "y", "z"].forEach(markDup);
+        }
+      }
+    });
 
+<<<<<<< HEAD
     const check = (p, t) => {
       if (!pointInPolygon(p, vertices)) {
         t.x = t.y = true;
@@ -626,10 +789,51 @@ export default function App() {
         v.F1.z = v.F2.z = true;
         v.F1.msg.push(`F1–F2: |Z| = ${dz.toFixed(1)} < 0.7 m`);
         v.F2.msg.push(`F1–F2: |Z| = ${dz.toFixed(1)} < 0.7 m`);
+=======
+    // Validar polígono y márgenes
+    if (activeF1) {
+      const msgs = checkPolygonAndMargins(F1, vertices, alturaZ);
+      if (msgs.length > 0) {
+        v.F1.x = v.F1.y = msgs.some(m => m.includes("XY") || m.includes("borde"));
+        v.F1.z = msgs.some(m => m.includes("Z"));
+        v.F1.msg.push(...msgs);
+>>>>>>> 72d7421 (refactor: eliminar duplicación de lógica de validación)
       }
     }
+    if (activeF2) {
+      const msgs = checkPolygonAndMargins(F2, vertices, alturaZ);
+      if (msgs.length > 0) {
+        v.F2.x = v.F2.y = msgs.some(m => m.includes("XY") || m.includes("borde"));
+        v.F2.z = msgs.some(m => m.includes("Z"));
+        v.F2.msg.push(...msgs);
+      }
+    }
+    blue.forEach((b, i) => {
+      const msgs = checkPolygonAndMargins(b, vertices, alturaZ);
+      if (msgs.length > 0) {
+        v.blue[i].x = v.blue[i].y = msgs.some(m => m.includes("XY") || m.includes("borde"));
+        v.blue[i].z = msgs.some(m => m.includes("Z"));
+        v.blue[i].msg.push(...msgs);
+      }
+    });
 
-    // Distancias 3D azules contra fuentes activas y entre sí
+    // Validar distancias F1-F2
+    if (activeF1 && activeF2) {
+      const f1f2 = checkF1F2Distances(F1, F2);
+      if (f1f2.violations.x) {
+        v.F1.x = v.F2.x = true;
+      }
+      if (f1f2.violations.y) {
+        v.F1.y = v.F2.y = true;
+      }
+      if (f1f2.violations.z) {
+        v.F1.z = v.F2.z = true;
+      }
+      v.F1.msg.push(...f1f2.messages);
+      v.F2.msg.push(...f1f2.messages);
+    }
+
+    // Validar distancias 3D azules contra fuentes activas y entre sí
     blue.forEach((b, i) => {
       if (activeF1 && dist3D(b, F1) < MIN_RED_BLUE) {
         v.blue[i].x = v.blue[i].y = v.blue[i].z = true;
@@ -640,7 +844,7 @@ export default function App() {
         v.blue[i].msg.push(`Distancia a F2 < 1.0 (=${dist3D(b, F2).toFixed(1)} m)`);
       }
     });
-    for (let i = 0; i < blue.length; i++)
+    for (let i = 0; i < blue.length; i++) {
       for (let j = i + 1; j < blue.length; j++) {
         const d = dist3D(blue[i], blue[j]);
         if (d < MIN_BLUE_BLUE) {
@@ -650,6 +854,7 @@ export default function App() {
           v.blue[j].msg.push(`P${i + 1}–P${j + 1} < 0.7 (=${d.toFixed(1)} m)`);
         }
       }
+    }
 
     v.F1.msg = Array.from(new Set(v.F1.msg));
     v.F2.msg = Array.from(new Set(v.F2.msg));
@@ -664,6 +869,7 @@ export default function App() {
   // Helper: resumen de violaciones para un conjunto de puntos (mensaje de imposibilidad)
   const buildViolationSummary = (pts) => {
     const out = [];
+<<<<<<< HEAD
     // márgenes y polígono
     pts.forEach((p, i) => {
       if (!pointInPolygon(p, vertices) || minDistToEdges2D(p, vertices) < MARGIN - EPS) out.push(`P${i + 1} fuera del polígono o a < 0.5 m del borde`);
@@ -675,21 +881,43 @@ export default function App() {
       if (axis !== "z" && activeF1) {
         const k = key01(F1[axis]);
         map.set(k, [...(map.get(k) || []), "F1"]);
+=======
+    
+    // Construir lista de puntos con nombres
+    const pointsWithNames = pts.map((p, i) => ({ name: `P${i + 1}`, p }));
+    const allPoints = [
+      ...(activeF1 ? [{ name: "F1", p: F1 }] : []),
+      ...(activeF2 ? [{ name: "F2", p: F2 }] : []),
+      ...pointsWithNames,
+    ];
+    
+    // Validar márgenes y polígono
+    pointsWithNames.forEach(({ name, p }) => {
+      const msgs = checkPolygonAndMargins(p, vertices, alturaZ);
+      if (msgs.length > 0) {
+        if (msgs.some(m => m.includes("polígono") || m.includes("borde"))) {
+          out.push(`${name} fuera del polígono o a <0,5 m del borde`);
+        }
+        if (msgs.some(m => m.includes("Z"))) {
+          out.push(`${name} con Z fuera de márgenes`);
+        }
+>>>>>>> 72d7421 (refactor: eliminar duplicación de lógica de validación)
       }
-      if (axis !== "z" && activeF2) {
-        const k = key01(F2[axis]);
-        map.set(k, [...(map.get(k) || []), "F2"]);
-      }
-      pts.forEach((p, i) => {
-        const k = key01(p[axis]);
-        map.set(k, [...(map.get(k) || []), `P${i + 1}`]);
-      });
-      for (const [k, names] of map) if (names.length > 1) out.push(`${axis.toUpperCase()} repetida (= ${k}) entre ${names.join(", ")}`);
     });
-    // distancias
-    pts.forEach((p, i) => {
+    
+    // Validar duplicidades por ejes (X/Y entre todos; Z solo entre Pxs)
+    const dupMsgs = checkCoordinateDuplicates(allPoints, { includeFx: true });
+    out.push(...dupMsgs);
+    
+    // Validar distancias P-P
+    const distCheck = checkAllDistances(pointsWithNames, { activeF1, activeF2, F1, F2 });
+    out.push(...distCheck.msgs);
+    
+    // Validar distancias P-F (no incluidas en checkAllDistances cuando solo hay Pxs)
+    pointsWithNames.forEach(({ name, p }) => {
       if (activeF1) {
         const d = dist3D(p, F1);
+<<<<<<< HEAD
         if (d < MIN_RED_BLUE) out.push(`P${i + 1} a F1 = ${d.toFixed(1)} < 1.0 m`);
       }
       if (activeF2) {
@@ -702,6 +930,16 @@ export default function App() {
         const d = dist3D(pts[i], pts[j]);
         if (d < MIN_BLUE_BLUE) out.push(`P${i + 1}–P${j + 1} = ${d.toFixed(1)} < 0.7 m`);
       }
+=======
+        if (d < MIN_RED_BLUE) out.push(`${name} a F1 = ${d.toFixed(2)} < 1,0 m`);
+      }
+      if (activeF2) {
+        const d = dist3D(p, F2);
+        if (d < MIN_RED_BLUE) out.push(`${name} a F2 = ${d.toFixed(2)} < 1,0 m`);
+      }
+    });
+    
+>>>>>>> 72d7421 (refactor: eliminar duplicación de lógica de validación)
     return Array.from(new Set(out));
   };
 
@@ -917,6 +1155,7 @@ export default function App() {
 
   // Pares en violación de distancias + mensajes para avisos
   const distViol = useMemo(() => {
+<<<<<<< HEAD
     const pairs = new Set();
     const msgs = [];
     const N = pointListTable.length;
@@ -959,6 +1198,12 @@ export default function App() {
     }
     return { pairs, msgs };
   }, [pointListTable]);
+=======
+    // Usar función auxiliar para calcular distancias
+    const result = checkAllDistances(pointList, { activeF1, activeF2, F1, F2 });
+    return result;
+  }, [pointList, activeF1, activeF2, F1, F2]);
+>>>>>>> 72d7421 (refactor: eliminar duplicación de lógica de validación)
 
   return (
     <div className="p-6 space-y-4">
@@ -1391,13 +1636,13 @@ export default function App() {
             </button>
           </div>          {/* Avisos de incoherencia (siempre en rojo) */}
           {(() => {
-            const list = [];
             const pts = [
               ...(activeF1 ? [{ name: "F1", p: F1 }] : []),
               ...(activeF2 ? [{ name: "F2", p: F2 }] : []),
               ...(blueActive ? blue.map((b, i) => ({ name: `P${i + 1}`, p: b })) : []),
             ];
 
+<<<<<<< HEAD
             // Márgenes y polígono (XY) y límites en Z para todos los puntos activos
             pts.forEach(({ name, p }) => {
               if (!pointInPolygon(p, vertices) || minDistToEdges2D(p, vertices) < MARGIN - EPS) {
@@ -1422,7 +1667,15 @@ export default function App() {
             // Añadir avisos por distancias (F–F por ejes; F–P 3D <1.0; P–P 3D <0.7)
             distViol.msgs.forEach((m) => list.push(m));
 
+=======
+            // Validar duplicidades (Z solo entre Pxs)
+            const dupMsgs = checkCoordinateDuplicates(pts, { includeFx: false });
+            
+            // Añadir avisos por distancias (F–F por ejes; F–P 3D <1,0; P–P 3D <0,7)
+            const list = [...dupMsgs, ...distViol.msgs];
+>>>>>>> 72d7421 (refactor: eliminar duplicación de lógica de validación)
             const uniq = Array.from(new Set(list));
+            
             return uniq.length ? (
               <div className="mt-2 p-2 border border-red-300 rounded bg-red-50 text-red-700 text-xs">
                 <div className="font-medium mb-1">Avisos de incoherencia:</div>
