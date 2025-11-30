@@ -308,24 +308,24 @@ function checkAllDistances(points, { activeF1 = false, activeF2 = false, F1 = nu
         const dy = Math.abs(A.p.y - B.p.y);
         const dz = Math.abs(A.p.z - B.p.z);
         const parts = [];
-        if (dx < MIN_F_F_AXIS) parts.push(`|X|=${dx.toFixed(2)}`);
-        if (dy < MIN_F_F_AXIS) parts.push(`|Y|=${dy.toFixed(2)}`);
-        if (dz < MIN_F_F_AXIS) parts.push(`|Z|=${dz.toFixed(2)}`);
+        if (dx < MIN_F_F_AXIS) parts.push(`|X|=${dx.toFixed(1)}`);
+        if (dy < MIN_F_F_AXIS) parts.push(`|Y|=${dy.toFixed(1)}`);
+        if (dz < MIN_F_F_AXIS) parts.push(`|Z|=${dz.toFixed(1)}`);
         if (parts.length) {
           pairs.add(`${i}-${j}`);
-          msgs.push(`${nameA}–${nameB}: ${parts.join(", ")} < 0,7 m`);
+          msgs.push(`${nameA}–${nameB}: ${parts.join(", ")} < 0.7 m`);
         }
       } else if ((isFA && isPB) || (isFB && isPA)) {
         const d = dist3D(A.p, B.p);
         if (d < MIN_RED_BLUE) {
           pairs.add(`${i}-${j}`);
-          msgs.push(`${nameA}–${nameB} = ${d.toFixed(2)} < 1,0 m (3D)`);
+          msgs.push(`${nameA}–${nameB} = ${d.toFixed(1)} < 1.0 m (3D)`);
         }
       } else if (isPA && isPB) {
         const d = dist3D(A.p, B.p);
         if (d < MIN_BLUE_BLUE) {
           pairs.add(`${i}-${j}`);
-          msgs.push(`${nameA}–${nameB} = ${d.toFixed(2)} < 0,7 m (3D)`);
+          msgs.push(`${nameA}–${nameB} = ${d.toFixed(1)} < 0.7 m (3D)`);
         }
       }
     }
@@ -339,7 +339,7 @@ function generateBluePoints({
   F1,
   F2,
   candidates,
-  seed,
+  seed = null,
   genNonce,
   f1Active = true,
   f2Active = true,
@@ -751,59 +751,19 @@ export default function App() {
       }
     });
 
-<<<<<<< HEAD
-    const check = (p, t) => {
-      if (!pointInPolygon(p, vertices)) {
-        t.x = t.y = true;
-        t.msg.push("Fuera del polígono (XY)");
-      }
-      if (minDistToEdges2D(p, vertices) < MARGIN - EPS) {
-        t.x = t.y = true;
-        t.msg.push("A < 0.5 del borde (XY)");
-      }
-      if (p.z < MARGIN || p.z > alturaZ - MARGIN) {
-        t.z = true;
-        t.msg.push("Z fuera de márgenes");
-      }
-    };
-    if (activeF1) check(F1, v.F1);
-    if (activeF2) check(F2, v.F2);
-    blue.forEach((b, i) => check(b, v.blue[i]));
-
-    // Reglas F1–F2 por ejes (simultáneamente) solo si ambas fuentes están activas
-    if (activeF1 && activeF2) {
-      const dx = Math.abs(F1.x - F2.x),
-        dy = Math.abs(F1.y - F2.y),
-        dz = Math.abs(F1.z - F2.z);
-      if (dx < 0.7) {
-        v.F1.x = v.F2.x = true;
-        v.F1.msg.push(`F1–F2: |X| = ${dx.toFixed(1)} < 0.7 m`);
-        v.F2.msg.push(`F1–F2: |X| = ${dx.toFixed(1)} < 0.7 m`);
-      }
-      if (dy < 0.7) {
-        v.F1.y = v.F2.y = true;
-        v.F1.msg.push(`F1–F2: |Y| = ${dy.toFixed(1)} < 0.7 m`);
-        v.F2.msg.push(`F1–F2: |Y| = ${dy.toFixed(1)} < 0.7 m`);
-      }
-      if (dz < 0.7) {
-        v.F1.z = v.F2.z = true;
-        v.F1.msg.push(`F1–F2: |Z| = ${dz.toFixed(1)} < 0.7 m`);
-        v.F2.msg.push(`F1–F2: |Z| = ${dz.toFixed(1)} < 0.7 m`);
-=======
     // Validar polígono y márgenes
     if (activeF1) {
       const msgs = checkPolygonAndMargins(F1, vertices, alturaZ);
       if (msgs.length > 0) {
-        v.F1.x = v.F1.y = msgs.some(m => m.includes("XY") || m.includes("borde"));
+        v.F1.x = v.F1.y = msgs.some(m => m.includes("polígono") || m.includes("borde"));
         v.F1.z = msgs.some(m => m.includes("Z"));
         v.F1.msg.push(...msgs);
->>>>>>> 72d7421 (refactor: eliminar duplicación de lógica de validación)
       }
     }
     if (activeF2) {
       const msgs = checkPolygonAndMargins(F2, vertices, alturaZ);
       if (msgs.length > 0) {
-        v.F2.x = v.F2.y = msgs.some(m => m.includes("XY") || m.includes("borde"));
+        v.F2.x = v.F2.y = msgs.some(m => m.includes("polígono") || m.includes("borde"));
         v.F2.z = msgs.some(m => m.includes("Z"));
         v.F2.msg.push(...msgs);
       }
@@ -811,7 +771,7 @@ export default function App() {
     blue.forEach((b, i) => {
       const msgs = checkPolygonAndMargins(b, vertices, alturaZ);
       if (msgs.length > 0) {
-        v.blue[i].x = v.blue[i].y = msgs.some(m => m.includes("XY") || m.includes("borde"));
+        v.blue[i].x = v.blue[i].y = msgs.some(m => m.includes("polígono") || m.includes("borde"));
         v.blue[i].z = msgs.some(m => m.includes("Z"));
         v.blue[i].msg.push(...msgs);
       }
@@ -869,19 +829,6 @@ export default function App() {
   // Helper: resumen de violaciones para un conjunto de puntos (mensaje de imposibilidad)
   const buildViolationSummary = (pts) => {
     const out = [];
-<<<<<<< HEAD
-    // márgenes y polígono
-    pts.forEach((p, i) => {
-      if (!pointInPolygon(p, vertices) || minDistToEdges2D(p, vertices) < MARGIN - EPS) out.push(`P${i + 1} fuera del polígono o a < 0.5 m del borde`);
-      if (p.z < MARGIN || p.z > alturaZ - MARGIN) out.push(`P${i + 1} con Z fuera de márgenes`);
-    });
-    // duplicidades por ejes (X/Y entre todos; Z solo entre Pxs)
-    ["x", "y", "z"].forEach((axis) => {
-      const map = new Map();
-      if (axis !== "z" && activeF1) {
-        const k = key01(F1[axis]);
-        map.set(k, [...(map.get(k) || []), "F1"]);
-=======
     
     // Construir lista de puntos con nombres
     const pointsWithNames = pts.map((p, i) => ({ name: `P${i + 1}`, p }));
@@ -896,12 +843,11 @@ export default function App() {
       const msgs = checkPolygonAndMargins(p, vertices, alturaZ);
       if (msgs.length > 0) {
         if (msgs.some(m => m.includes("polígono") || m.includes("borde"))) {
-          out.push(`${name} fuera del polígono o a <0,5 m del borde`);
+          out.push(`${name} fuera del polígono o a < 0.5 m del borde`);
         }
         if (msgs.some(m => m.includes("Z"))) {
           out.push(`${name} con Z fuera de márgenes`);
         }
->>>>>>> 72d7421 (refactor: eliminar duplicación de lógica de validación)
       }
     });
     
@@ -917,29 +863,14 @@ export default function App() {
     pointsWithNames.forEach(({ name, p }) => {
       if (activeF1) {
         const d = dist3D(p, F1);
-<<<<<<< HEAD
-        if (d < MIN_RED_BLUE) out.push(`P${i + 1} a F1 = ${d.toFixed(1)} < 1.0 m`);
+        if (d < MIN_RED_BLUE) out.push(`${name} a F1 = ${d.toFixed(1)} < 1.0 m`);
       }
       if (activeF2) {
         const d = dist3D(p, F2);
-        if (d < MIN_RED_BLUE) out.push(`P${i + 1} a F2 = ${d.toFixed(1)} < 1.0 m`);
-      }
-    });
-    for (let i = 0; i < pts.length; i++)
-      for (let j = i + 1; j < pts.length; j++) {
-        const d = dist3D(pts[i], pts[j]);
-        if (d < MIN_BLUE_BLUE) out.push(`P${i + 1}–P${j + 1} = ${d.toFixed(1)} < 0.7 m`);
-      }
-=======
-        if (d < MIN_RED_BLUE) out.push(`${name} a F1 = ${d.toFixed(2)} < 1,0 m`);
-      }
-      if (activeF2) {
-        const d = dist3D(p, F2);
-        if (d < MIN_RED_BLUE) out.push(`${name} a F2 = ${d.toFixed(2)} < 1,0 m`);
+        if (d < MIN_RED_BLUE) out.push(`${name} a F2 = ${d.toFixed(1)} < 1.0 m`);
       }
     });
     
->>>>>>> 72d7421 (refactor: eliminar duplicación de lógica de validación)
     return Array.from(new Set(out));
   };
 
@@ -1155,7 +1086,6 @@ export default function App() {
 
   // Pares en violación de distancias + mensajes para avisos
   const distViol = useMemo(() => {
-<<<<<<< HEAD
     const pairs = new Set();
     const msgs = [];
     const N = pointListTable.length;
@@ -1174,22 +1104,22 @@ export default function App() {
           const dy = Math.abs(A.p.y - B.p.y);
           const dz = Math.abs(A.p.z - B.p.z);
           const parts = [];
-          if (dx < 0.7) parts.push(`|X|=${dx.toFixed(1)}`);
-          if (dy < 0.7) parts.push(`|Y|=${dy.toFixed(1)}`);
-          if (dz < 0.7) parts.push(`|Z|=${dz.toFixed(1)}`);
+          if (dx < MIN_F_F_AXIS) parts.push(`|X|=${dx.toFixed(1)}`);
+          if (dy < MIN_F_F_AXIS) parts.push(`|Y|=${dy.toFixed(1)}`);
+          if (dz < MIN_F_F_AXIS) parts.push(`|Z|=${dz.toFixed(1)}`);
           if (parts.length) {
             pairs.add(`${i}-${j}`);
             msgs.push(`${nameA}–${nameB}: ${parts.join(", ")} < 0.7 m`);
           }
         } else if ((isFA && isPB) || (isFB && isPA)) {
           const d = dist3D(A.p, B.p);
-          if (d < 1.0) {
+          if (d < MIN_RED_BLUE) {
             pairs.add(`${i}-${j}`);
             msgs.push(`${nameA}–${nameB} = ${d.toFixed(1)} < 1.0 m (3D)`);
           }
         } else if (isPA && isPB) {
           const d = dist3D(A.p, B.p);
-          if (d < 0.7) {
+          if (d < MIN_BLUE_BLUE) {
             pairs.add(`${i}-${j}`);
             msgs.push(`${nameA}–${nameB} = ${d.toFixed(1)} < 0.7 m (3D)`);
           }
@@ -1198,12 +1128,6 @@ export default function App() {
     }
     return { pairs, msgs };
   }, [pointListTable]);
-=======
-    // Usar función auxiliar para calcular distancias
-    const result = checkAllDistances(pointList, { activeF1, activeF2, F1, F2 });
-    return result;
-  }, [pointList, activeF1, activeF2, F1, F2]);
->>>>>>> 72d7421 (refactor: eliminar duplicación de lógica de validación)
 
   return (
     <div className="p-6 space-y-4">
@@ -1642,38 +1566,11 @@ export default function App() {
               ...(blueActive ? blue.map((b, i) => ({ name: `P${i + 1}`, p: b })) : []),
             ];
 
-<<<<<<< HEAD
-            // Márgenes y polígono (XY) y límites en Z para todos los puntos activos
-            pts.forEach(({ name, p }) => {
-              if (!pointInPolygon(p, vertices) || minDistToEdges2D(p, vertices) < MARGIN - EPS) {
-                list.push(`${name} fuera del polígono o a < 0.5 m del borde`);
-              }
-              if (p.z < MARGIN || p.z > alturaZ - MARGIN) {
-                list.push(`${name} con Z fuera de márgenes`);
-              }
-            });
-
-            ["x", "y", "z"].forEach((axis) => {
-              const map = new Map();
-              const pool = axis === "z" ? pts.filter(({ name }) => name.startsWith("P")) : pts;
-              pool.forEach(({ name, p }) => {
-                const k = (Math.round(p[axis] * 10) / 10).toFixed(1);
-                if (!map.has(k)) map.set(k, []);
-                map.get(k).push(name);
-              });
-              for (const [k, names] of map) if (names.length > 1) list.push(`${axis.toUpperCase()} repetida (= ${k}) entre ${names.join(", ")}`);
-            });
-
-            // Añadir avisos por distancias (F–F por ejes; F–P 3D <1.0; P–P 3D <0.7)
-            distViol.msgs.forEach((m) => list.push(m));
-
-=======
             // Validar duplicidades (Z solo entre Pxs)
             const dupMsgs = checkCoordinateDuplicates(pts, { includeFx: false });
             
-            // Añadir avisos por distancias (F–F por ejes; F–P 3D <1,0; P–P 3D <0,7)
+            // Añadir avisos por distancias (F–F por ejes; F–P 3D <1.0; P–P 3D <0.7)
             const list = [...dupMsgs, ...distViol.msgs];
->>>>>>> 72d7421 (refactor: eliminar duplicación de lógica de validación)
             const uniq = Array.from(new Set(list));
             
             return uniq.length ? (
